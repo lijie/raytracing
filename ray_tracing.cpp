@@ -38,9 +38,9 @@ class Vec3 {
   inline Vec3 operator+(const Vec3& v2) {
     return Vec3(e[0] + v2.e[0], e[1] + v2.e[1], e[2] + v2.e[2]);
   }
-  inline Vec3 operator-(const Vec3& v2) {
-    return Vec3(e[0] - v2.e[0], e[1] - v2.e[1], e[2] - v2.e[2]);
-  }
+  // inline Vec3 operator-(const Vec3& v2) {
+  //   return Vec3(e[0] - v2.e[0], e[1] - v2.e[1], e[2] - v2.e[2]);
+  // }
   inline Vec3 operator*(const Vec3& v2) {
     return Vec3(e[0] * v2.e[0], e[1] * v2.e[1], e[2] * v2.e[2]);
   }
@@ -109,6 +109,9 @@ inline Vec3 operator+(const Vec3& v1, float v) {
 inline Vec3 operator+(float v, const Vec3& v1) {
   return Vec3(v1.x() + v, v1.y() + v, v1.z() + v);
 }
+inline Vec3 operator-(const Vec3& v1, const Vec3& v2) {
+  return Vec3(v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z());
+}
 inline Vec3 operator*(float t, const Vec3& v) {
   return Vec3(t * v.x(), t * v.y(), t * v.z());
 }
@@ -174,8 +177,8 @@ class Hitable {
 class Sphere : public Hitable {
  public:
   Sphere() {}
-  Sphere(Vec3 center, float radius, const std::string& name)
-      : center_(center), radius_(radius), name_(name) {}
+  Sphere(Vec3 center, float radius, Material *mat, const std::string& name)
+      : center_(center), radius_(radius), mat_(mat), name_(name) {}
 
   bool Hit(const Ray& ray, float t_min, float t_max,
            HitRecord* rec) const override;
@@ -184,6 +187,7 @@ class Sphere : public Hitable {
 
   Vec3 center_;
   float radius_;
+  Material *mat_;
   std::string name_;
 };
 
@@ -213,6 +217,7 @@ bool Sphere::Hit(const Ray& ray, float t_min, float t_max,
   rec->t = t;
   rec->p = ray.point_at_parameter(t);
   rec->normal = (rec->p - center_) / radius_;
+  rec->mat = mat_;
   rec->target = (Hitable*)this;
   // printf("Sphere::Hit: %f\n", t);
   return true;
@@ -299,6 +304,51 @@ bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
   Vec3 target = rec.p + rec.normal + random_in_unit_sphere();
   *scattered = Ray(rec.p, target - rec.p);
   *attenuation = albedo_;
+  return true;
+}
+
+class Metal : public Material {
+ public:
+  // fuzz: 对反射后的ray加一个随机摆动
+  // 个人觉得fuzz为0时更像镜子的反射，加了fuzz之后更像金属的反射
+  Metal(const Vec3& a, float fuzz): albedo_(a), fuzz_(fuzz) {
+    if (fuzz_ > 1) fuzz_ = 1;
+  }
+  bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
+               Ray* scattered) const override;
+
+  Vec3 reflect(const Vec3& v, const Vec3& n) const;
+  // 在 unit sphere 中随机找一个点
+  Vec3 random_in_unit_sphere() const {
+    Vec3 p;
+    do {
+      // 随机数是 [0, 1)
+      // 但我们需要 (-1, 1)
+      p = 2.0 * Vec3(Rand(), Rand(), Rand()) - Vec3(1, 1, 1);
+    } while (dot(p, p) >= 1.0);  // 如果随机点不在sphere内,就继续找
+    return p;
+  }
+
+  Vec3 albedo_;
+  float fuzz_;
+};
+
+bool Metal::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
+                    Ray* scattered) const {
+  auto reflected = reflect(unit_vector(ray_in.direction()), rec.normal);
+  *scattered = Ray(rec.p, reflected + fuzz_ * random_in_unit_sphere());
+  *attenuation = albedo_;
+  // 我的理解是 dot(a,b) 可以看作a投影到b的length
+  // 如果反射的射线在法线上的投影<=0, 那说明从投射方向看不到这个反射.
+  return (dot(scattered->direction(), rec.normal) > 0);
+}
+
+// see FOCG, p238
+Vec3 Metal::reflect(const Vec3& v, const Vec3& n) const {
+  // 注意这里 dot(v, n) 主要是用来计算 cos(theta), theta 是v与n的夹角
+  // dot(v, n) = ||v|| * ||n|| * cos(theta) = cos(theta), 单位向量模都是1
+  // 详细请参考教科书的图解
+  return v - 2 * dot(v, n) * n;
 }
 
 void test_vec3() {
@@ -459,8 +509,8 @@ void test_two_sphere() {
 
   // 构造2个球体
   Hitable* list[2];
-  list[0] = new Sphere(Vec3(0, 0, -1), 0.5, "sphere_1");
-  list[1] = new Sphere(Vec3(0, -100.5, -1), 100, "sphere_2");
+  list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_1");
+  list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
   Hitable* world = new HitableList(list, 2);
 
   auto color_of_ray = [](const Ray& ray, Hitable* world) -> Vec3 {
@@ -562,8 +612,6 @@ class TestDiffuse {
 
  public:
   void Run() {
-    std::cout << "aaaaa" << std::endl;
-
     std::vector<int> data;
     int nx = 200;
     int ny = 100;
@@ -573,8 +621,8 @@ class TestDiffuse {
 
     // 构造2个球体
     Hitable* list[2];
-    list[0] = new Sphere(Vec3(0, 0, -1), 0.5, "sphere_1");
-    list[1] = new Sphere(Vec3(0, -100.5, -1), 100, "sphere_2");
+    list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_1");
+    list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
     Hitable* world = new HitableList(list, 2);
 
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
@@ -597,7 +645,6 @@ class TestDiffuse {
       }
     }
 
-    std::cout << "aaaaa" << std::endl;
     write_ppm("test_diffuse.ppm", nx, ny, data);
 
     delete world;
@@ -611,12 +658,89 @@ void test_diffuse() {
   test.Run();
 }
 
+class TestMetal {
+ private:
+  // depth 控制反射次数
+  Vec3 color_of_ray(const Ray& ray, Hitable *world, int depth) {
+    HitRecord rec;
+
+    if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
+      Ray scattered;
+      Vec3 attenuation;
+
+      if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered)) {
+        return attenuation * color_of_ray(scattered, world, depth + 1);
+      } else {
+        return Vec3(0, 0, 0); // black
+      }
+    } else {
+      // 未命中blend蓝白
+      auto white = Vec3(1, 1, 1);
+      auto blue = Vec3(0.5, 0.7, 1.0);
+      auto unit = unit_vector(ray.direction());
+      auto t = (unit.y() + 1.0) * 0.5;
+      return RGB((1 - t) * white + t * blue);
+    }
+  }
+ public:
+  void Run() {
+    std::vector<int> data;
+    int nx = 400;
+    int ny = 200;
+    int ns = 100;  // for antialiasing
+
+    Camera camera;
+
+    Hitable* list[4];
+    list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.8, 0.3, 0.3)), "sphere_1");
+    list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.8, 0.8, 0.0)), "sphere_2");
+    list[2] = new Sphere(Vec3(1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.6, 0.2), 0.3), "sphere_3");
+    list[3] = new Sphere(Vec3(-1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.8, 0.8), 1.0), "sphere_4");
+    
+    Hitable* world = new HitableList(list, 4);
+
+    // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
+    for (int i = ny - 1; i >= 0; i--) {
+      for (int j = 0; j < nx; j++) {
+        Vec3 color(0, 0, 0);
+        // 抗锯齿, 随机ns次与附近的颜色平均
+        for (int s = 0; s < ns; s++) {
+          // 计算当前像素点的uv (相对于左下角的偏移)
+          float u = float(j + Rand()) / float(nx);
+          float v = float(i + Rand()) / float(ny);
+          auto ray = camera.GetRay(u, v);
+          color += color_of_ray(ray, world, 0);
+        }
+        color /= float(ns);
+
+        data.push_back(color.x());
+        data.push_back(color.y());
+        data.push_back(color.z());
+      }
+    }
+
+    write_ppm("test_metal.ppm", nx, ny, data);
+
+    delete world;
+    delete list[0];
+    delete list[1];
+    delete list[2];
+    delete list[3];
+  }
+};
+
+void test_metal() {
+  TestMetal test;
+  test.Run();
+}
+
 void run_test() {
-  // test_vec3();
-  // test_ppm_output();
-  // test_linear_blend_blue_to_white();
-  // test_two_sphere();
+  test_vec3();
+  test_ppm_output();
+  test_linear_blend_blue_to_white();
+  test_two_sphere();
   test_diffuse();
+  test_metal();
 }
 
 int main() {
