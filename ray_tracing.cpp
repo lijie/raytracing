@@ -16,24 +16,24 @@
 class Vec3 {
  public:
   Vec3() {}
-  Vec3(float e1, float e2, float e3) {
+  Vec3(double e1, double e2, double e3) {
     e[0] = e1;
     e[1] = e2;
     e[2] = e3;
   }
 
-  inline const float x() const { return e[0]; }
-  inline const float y() const { return e[1]; }
-  inline const float z() const { return e[2]; }
+  inline const double x() const { return e[0]; }
+  inline const double y() const { return e[1]; }
+  inline const double z() const { return e[2]; }
 
-  inline const float r() const { return e[0]; }
-  inline const float g() const { return e[1]; }
-  inline const float b() const { return e[2]; }
+  inline const double r() const { return e[0]; }
+  inline const double g() const { return e[1]; }
+  inline const double b() const { return e[2]; }
 
   inline const Vec3& operator+() const { return *this; }
   inline Vec3 operator-() const { return Vec3(-e[0], -e[1], -e[2]); }
-  inline float operator[](int i) { return e[i]; }
-  // inline float& operator[](int i) { return e[i]; }
+  inline double operator[](int i) { return e[i]; }
+  // inline double& operator[](int i) { return e[i]; }
 
   inline Vec3 operator+(const Vec3& v2) {
     return Vec3(e[0] + v2.e[0], e[1] + v2.e[1], e[2] + v2.e[2]);
@@ -47,10 +47,10 @@ class Vec3 {
   inline Vec3 operator/(const Vec3& v2) {
     return Vec3(e[0] / v2.e[0], e[1] / v2.e[1], e[2] / v2.e[2]);
   }
-  // inline Vec3 operator/(float t) { return Vec3(e[0] / t, e[1] / t, e[2] / t); }
-  // inline Vec3 operator*(float t) { return Vec3(e[0] * t, e[1] * t, e[2] * t); }
+  // inline Vec3 operator/(double t) { return Vec3(e[0] / t, e[1] / t, e[2] / t); }
+  // inline Vec3 operator*(double t) { return Vec3(e[0] * t, e[1] * t, e[2] * t); }
 
-  inline float dot(const Vec3& v2) {
+  inline double dot(const Vec3& v2) {
     return x() * v2.x() + y() * v2.y() + z() * v2.z();
   }
 
@@ -75,18 +75,18 @@ class Vec3 {
   inline Vec3& operator*=(const Vec3& v2);
   inline Vec3& operator/=(const Vec3& v2);
 
-  inline Vec3& operator*=(float t);
-  inline Vec3& operator/=(float t) {
+  inline Vec3& operator*=(double t);
+  inline Vec3& operator/=(double t) {
     e[0] /= t;
     e[1] /= t;
     e[2] /= t;
     return *this;
   }
 
-  inline float length() const {
+  inline double length() const {
     return sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
   }
-  inline float suqared_length() const {
+  inline double suqared_length() const {
     return e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
   }
   inline void make_unit_vector();
@@ -97,35 +97,32 @@ class Vec3 {
     return ss.str();
   }
 
-  float e[3];
+  double e[3];
 };
 
 inline Vec3 operator+(const Vec3& v1, const Vec3& v2) {
   return Vec3(v1.x() + v2.x(), v1.y() + v2.y(), v1.z() + v2.z());
 }
-inline Vec3 operator+(const Vec3& v1, float v) {
+inline Vec3 operator+(const Vec3& v1, double v) {
   return Vec3(v1.x() + v, v1.y() + v, v1.z() + v);
 }
-inline Vec3 operator+(float v, const Vec3& v1) {
+inline Vec3 operator+(double v, const Vec3& v1) {
   return Vec3(v1.x() + v, v1.y() + v, v1.z() + v);
 }
 inline Vec3 operator-(const Vec3& v1, const Vec3& v2) {
   return Vec3(v1.x() - v2.x(), v1.y() - v2.y(), v1.z() - v2.z());
 }
-inline Vec3 operator*(float t, const Vec3& v) {
-  return Vec3(t * v.x(), t * v.y(), t * v.z());
-}
-inline Vec3 operator*(const Vec3& v, float t) {
+inline Vec3 operator*(double t, const Vec3& v) {
   return Vec3(t * v.x(), t * v.y(), t * v.z());
 }
 inline Vec3 operator*(const Vec3& v, double t) {
   return Vec3(t * v.x(), t * v.y(), t * v.z());
 }
-inline Vec3 operator/(const Vec3& v, float t) {
+inline Vec3 operator/(const Vec3& v, double t) {
   return Vec3(v.x() / t, v.y() / t, v.z() / t);
 }
 inline Vec3 unit_vector(const Vec3& v) { return v / v.length(); }
-inline float dot(const Vec3& v1, const Vec3& v2) {
+inline double dot(const Vec3& v1, const Vec3& v2) {
   return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
 }
 // [-1, 1] -> [0, 1]
@@ -134,9 +131,9 @@ inline Vec3 normalize(const Vec3& v) { return (v + 1) * 0.5; }
 inline Vec3 RGB(const Vec3& v) { return 255.99 * v; }
 
 // 返回随机数 [0, 1)
-float Rand() {
+double Rand() {
   int v = rand();
-  return float(v) / float(RAND_MAX);
+  return double(v) / double(RAND_MAX);
 }
 
 class Ray {
@@ -157,7 +154,7 @@ class Ray {
 
   Vec3 origin() const { return a_; }
   Vec3 direction() const { return b_; }
-  Vec3 point_at_parameter(float t) const { return a_ + t * b_; }
+  Vec3 point_at_parameter(double t) const { return a_ + t * b_; }
   Vec3 a_;  // 原点
   Vec3 b_;  // 方向
 };
@@ -166,7 +163,7 @@ class Hitable;
 class Material;
 
 struct HitRecord {
-  float t;          // paramter of ray
+  double t;          // paramter of ray
   Vec3 p;           // ray at point
   Vec3 normal;      // normal vector of this point
   Hitable* target;  // hitted target, for debug
@@ -175,7 +172,7 @@ struct HitRecord {
 
 class Hitable {
  public:
-  virtual bool Hit(const Ray& ray, float t_min, float t_max,
+  virtual bool Hit(const Ray& ray, double t_min, double t_max,
                    HitRecord* rec) const = 0;
   virtual std::string Name() = 0;
 };
@@ -183,36 +180,36 @@ class Hitable {
 class Sphere : public Hitable {
  public:
   Sphere() {}
-  Sphere(Vec3 center, float radius, Material *mat, const std::string& name)
+  Sphere(Vec3 center, double radius, Material *mat, const std::string& name)
       : center_(center), radius_(radius), mat_(mat), name_(name) {}
 
-  bool Hit(const Ray& ray, float t_min, float t_max,
+  bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
 
   std::string Name() override { return name_; }
 
   Vec3 center_;
-  float radius_;
+  double radius_;
   Material *mat_;
   std::string name_;
 };
 
 // 更完整的检测, 简单验证版本参考 hit_sphere()
 // 相关数学公式参考 FOCG, p76&p77
-bool Sphere::Hit(const Ray& ray, float t_min, float t_max,
+bool Sphere::Hit(const Ray& ray, double t_min, double t_max,
                  HitRecord* rec) const {
   Vec3 oc = ray.origin() - center_;
-  float a = dot(ray.direction(), ray.direction());
-  float b = 2 * dot(ray.direction(), oc);
-  float c = dot(oc, oc) - radius_ * radius_;
+  double a = dot(ray.direction(), ray.direction());
+  double b = 2 * dot(ray.direction(), oc);
+  double c = dot(oc, oc) - radius_ * radius_;
 
   // 射线检测 sphere 的方程是一个二元一次方程, discriminat 用来判定方程是否有解
   // see FOCG, p77
-  float discriminat = b * b - 4 * a * c;
+  double discriminat = b * b - 4 * a * c;
   // imaginary
   if (discriminat <= 0) return false;
 
-  float t = (-b - sqrt(discriminat)) / (2 * a);
+  double t = (-b - sqrt(discriminat)) / (2 * a);
   if (t <= t_min || t >= t_max) {
     t = (-b + sqrt(discriminat)) / (2 * a);
     if (t <= t_min || t >= t_max) {
@@ -233,7 +230,7 @@ class HitableList : public Hitable {
  public:
   HitableList() {}
   HitableList(Hitable** list, int size) : list_(list), size_(size) {}
-  bool Hit(const Ray& ray, float t_min, float t_max,
+  bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
 
   std::string Name() { return "HitableList"; }
@@ -242,10 +239,10 @@ class HitableList : public Hitable {
   int size_;
 };
 
-bool HitableList::Hit(const Ray& ray, float t_min, float t_max,
+bool HitableList::Hit(const Ray& ray, double t_min, double t_max,
                       HitRecord* rec) const {
   bool hit = false;
-  float closest_so_far = t_max;
+  double closest_so_far = t_max;
   HitRecord tmp;
   for (int i = 0; i < size_; i++) {
     if (list_[i]->Hit(ray, t_min, closest_so_far, &tmp)) {
@@ -266,9 +263,22 @@ class Camera {
     lower_left_corner_ = Vec3(-2, -1, -1);
   }
 
+  // fov: field of view, 视野, 角度
+  // aspect: 宽高比
+  Camera(double vfov, double aspect) {
+    double theta = vfov * M_PI / 180;
+    double half_height = tan(theta / 2);
+    double half_width = aspect * half_height;
+
+    origin_ = Vec3(0, 0, 0);
+    horizontal_ = half_width * 2;
+    vertical_ = half_height * 2;
+    lower_left_corner_ = 
+  }
+
   // 指定UV, 返回指向screen的一条射线
   // UV range [0, 1]
-  Ray GetRay(float u, float v) {
+  Ray GetRay(double u, double v) {
     return Ray(origin_,
                lower_left_corner_ + u * horizontal_ + v * vertical_ - origin_);
   }
@@ -317,7 +327,7 @@ class Metal : public Material {
  public:
   // fuzz: 对反射后的ray加一个随机摆动
   // 个人觉得fuzz为0时更像镜子的反射，加了fuzz之后更像金属的反射
-  Metal(const Vec3& a, float fuzz): albedo_(a), fuzz_(fuzz) {
+  Metal(const Vec3& a, double fuzz): albedo_(a), fuzz_(fuzz) {
     if (fuzz_ > 1) fuzz_ = 1;
   }
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
@@ -336,7 +346,7 @@ class Metal : public Material {
   }
 
   Vec3 albedo_;
-  float fuzz_;
+  double fuzz_;
 };
 
 bool Metal::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
@@ -361,17 +371,17 @@ Vec3 Metal::reflect(const Vec3& v, const Vec3& n) const {
 // 折射的数学原理参考 FOCG, p325
 class Dielectric : public Material {
  public:
-  Dielectric(float ref_idx): ref_idx_(ref_idx) {}
+  Dielectric(double ref_idx): ref_idx_(ref_idx) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
                Ray* scattered) const override;
   Vec3 reflect(const Vec3& v, const Vec3& n) const;
 
  private:
-  bool refract(const Vec3& v, const Vec3& n, float ni_over_nt, Vec3 *refracted) const;
-  float schlick(float cosine, float ref_idx) const;
+  bool refract(const Vec3& v, const Vec3& n, double ni_over_nt, Vec3 *refracted) const;
+  double schlick(double cosine, double ref_idx) const;
   // 参考折射率
   // 空气:1, 水:1.33-1.34, 窗户玻璃: 1.51, 光学玻璃: 1.49-1.92, 钻石: 2.42
-  float ref_idx_;
+  double ref_idx_;
 };
 
 // 折射的数学原理参考 FOCG, p325
@@ -380,7 +390,7 @@ class Dielectric : public Material {
 // a ray is going “into” an object. The simplest way to do this is to assume that all
 // objects are embedded in air with refractive index very close to 1.0, and that surface
 // normals point “out” (toward the air).
-bool Dielectric::refract(const Vec3& v, const Vec3& n, float ni_over_nt, Vec3 *refracted) const {
+bool Dielectric::refract(const Vec3& v, const Vec3& n, double ni_over_nt, Vec3 *refracted) const {
   auto unit_v = unit_vector(v);
   auto dt = dot(unit_v, n);
   auto discriminat = 1 - (ni_over_nt * ni_over_nt * (1 - dt * dt));
@@ -398,8 +408,8 @@ Vec3 Dielectric::reflect(const Vec3& v, const Vec3& n) const {
   return v - 2 * dot(v, n) * n;
 }
 
-float Dielectric::schlick(float cosine, float ref_idx) const {
-  float r0 = (1 - ref_idx) / (1 + ref_idx);
+double Dielectric::schlick(double cosine, double ref_idx) const {
+  double r0 = (1 - ref_idx) / (1 + ref_idx);
   r0 = r0*r0;
   return r0 + (1 - r0) * pow(1 - cosine, 5);
 }
@@ -409,9 +419,9 @@ bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuat
   Vec3 outward_normal;
   Vec3 reflected = reflect(ray_in.direction(), rec.normal);
   Vec3 refracted;
-  float ni_over_nt;
-  float reflect_prob;
-  float cosine;
+  double ni_over_nt;
+  double reflect_prob;
+  double cosine;
 
   *attenuation = Vec3(1.0, 1.0, 1.0); // 全反射
 
@@ -483,9 +493,9 @@ void test_ppm_output() {
 
   for (int i = ny - 1; i >= 0; i--) {
     for (int j = 0; j < nx; j++) {
-      float r = float(j) / nx;
-      float g = float(i) / ny;
-      float b = 0.2;
+      double r = double(j) / nx;
+      double g = double(i) / ny;
+      double b = 0.2;
 
       int ir = int(255.99 * r);
       int ig = int(255.99 * g);
@@ -510,15 +520,15 @@ void test_ppm_output() {
 // => dot(P(t)-C, P(t)-C) = R*R
 // => t*t*dot(B,B)+2*t*dot(B,A-C)+dot(A-C,A-C)-R*R=0 (假定 A 是(0,0,0))
 // see FOCG, p76
-float hit_sphere(const Vec3& center, float radius, const Ray& ray) {
+double hit_sphere(const Vec3& center, double radius, const Ray& ray) {
   Vec3 oc = ray.origin() - center;
-  float a = dot(ray.direction(), ray.direction());
-  float b = 2 * dot(ray.direction(), oc);
-  float c = dot(oc, oc) - radius * radius;
+  double a = dot(ray.direction(), ray.direction());
+  double b = 2 * dot(ray.direction(), oc);
+  double c = dot(oc, oc) - radius * radius;
 
   // 射线检测 sphere 的方程是一个二元一次方程, discriminat 用来判定方程是否有解
   // see FOCG, p77
-  float discriminat = b * b - 4 * a * c;
+  double discriminat = b * b - 4 * a * c;
 
   if (discriminat < 0) {
     // 无解, 说明不相交
@@ -540,7 +550,7 @@ void linear_blend_blue_to_white(std::vector<int>* out, int nx, int ny) {
     auto unit = unit_vector(ray.direction());
 
     // 在屏幕中间放一个圆, 检测 ray 是否穿过
-    float t = hit_sphere(Vec3(0, 0, -1), 0.5, ray);
+    double t = hit_sphere(Vec3(0, 0, -1), 0.5, ray);
     if (t > 0.0) {
       // 有解, 算出法向量, 根据向量减法公式:
       // -(v_center - ray_at_p) -> ray_at_p - v_center
@@ -551,7 +561,7 @@ void linear_blend_blue_to_white(std::vector<int>* out, int nx, int ny) {
     }
 
     // [-1, 1] -> [0, 1]
-    float v = (unit.y() + 1.0) * 0.5;
+    double v = (unit.y() + 1.0) * 0.5;
     // blend white & blue
     auto blend_color = (1.0 - v) * white + v * blue;
     // convert to  [0, 255]
@@ -569,8 +579,8 @@ void linear_blend_blue_to_white(std::vector<int>* out, int nx, int ny) {
   for (int i = ny - 1; i >= 0; i--) {
     for (int j = 0; j < nx; j++) {
       // 计算当前像素点的uv (相对于左下角的偏移)
-      float u = float(j) / float(nx);
-      float v = float(i) / float(ny);
+      double u = double(j) / double(nx);
+      double v = double(i) / double(ny);
       // 从 eye 发出一条 ray
       // 首先算出 ray 的方向
       auto direction = lower_left_corner + u * width + v * height;
@@ -629,12 +639,12 @@ void test_two_sphere() {
       // 抗锯齿, 随机ns次与附近的颜色平均
       for (int s = 0; s < ns; s++) {
         // 计算当前像素点的uv (相对于左下角的偏移)
-        float u = float(j + Rand()) / float(nx);
-        float v = float(i + Rand()) / float(ny);
+        double u = double(j + Rand()) / double(nx);
+        double v = double(i + Rand()) / double(ny);
         auto ray = camera.GetRay(u, v);
         color += color_of_ray(ray, world);
       }
-      color /= float(ns);
+      color /= double(ns);
 
       data.push_back(color.x());
       data.push_back(color.y());
@@ -726,12 +736,12 @@ class TestDiffuse {
         // 抗锯齿, 随机ns次与附近的颜色平均
         for (int s = 0; s < ns; s++) {
           // 计算当前像素点的uv (相对于左下角的偏移)
-          float u = float(j + Rand()) / float(nx);
-          float v = float(i + Rand()) / float(ny);
+          double u = double(j + Rand()) / double(nx);
+          double v = double(i + Rand()) / double(ny);
           auto ray = camera.GetRay(u, v);
           color += color_of_ray(ray, world);
         }
-        color /= float(ns);
+        color /= double(ns);
 
         data.push_back(color.x());
         data.push_back(color.y());
@@ -779,8 +789,8 @@ class TestMetal {
  public:
   void Run() {
     std::vector<int> data;
-    int nx = 400;
-    int ny = 200;
+    int nx = 800;
+    int ny = 400;
     int ns = 100;  // for antialiasing
 
     Camera camera;
@@ -802,12 +812,12 @@ class TestMetal {
         // 抗锯齿, 随机ns次与附近的颜色平均
         for (int s = 0; s < ns; s++) {
           // 计算当前像素点的uv (相对于左下角的偏移)
-          float u = float(j + Rand()) / float(nx);
-          float v = float(i + Rand()) / float(ny);
+          double u = double(j + Rand()) / double(nx);
+          double v = double(i + Rand()) / double(ny);
           auto ray = camera.GetRay(u, v);
           color += color_of_ray(ray, world, 0);
         }
-        color /= float(ns);
+        color /= double(ns);
 
         data.push_back(color.x());
         data.push_back(color.y());
