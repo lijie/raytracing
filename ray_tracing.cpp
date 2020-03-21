@@ -3,14 +3,20 @@
 // 1. FOCG 指 <Fundamentals of Computer Graphics> 4th, Peter Shirley & Steve
 // Marschner
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <assert.h>
 #include <math.h>
 #include <time.h>
+
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <random>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 class Vec3 {
@@ -47,22 +53,12 @@ class Vec3 {
   inline Vec3 operator/(const Vec3& v2) {
     return Vec3(e[0] / v2.e[0], e[1] / v2.e[1], e[2] / v2.e[2]);
   }
-  // inline Vec3 operator/(double t) { return Vec3(e[0] / t, e[1] / t, e[2] / t); }
-  // inline Vec3 operator*(double t) { return Vec3(e[0] * t, e[1] * t, e[2] * t); }
+  // inline Vec3 operator/(double t) { return Vec3(e[0] / t, e[1] / t, e[2] /
+  // t); } inline Vec3 operator*(double t) { return Vec3(e[0] * t, e[1] * t,
+  // e[2] * t); }
 
   inline double dot(const Vec3& v2) {
     return x() * v2.x() + y() * v2.y() + z() * v2.z();
-  }
-
-  static inline Vec3 cross(const Vec3& v1, const Vec3& v2) {
-    return Vec3(v1.y() * v2.z() - v1.z() * v2.y(),
-                -(v1.x() * v2.z() - v1.z() * v2.x()),
-                v1.x() * v2.y() - v1.y() * v2.x());
-  }
-
-  inline Vec3 cross(const Vec3& v2) {
-    return Vec3(y() * v2.z() - z() * v2.y(), -(x() * v2.z() - z() * v2.x()),
-                x() * v2.y() - y() * v2.x());
   }
 
   inline Vec3& operator+=(const Vec3& v2) {
@@ -125,6 +121,14 @@ inline Vec3 unit_vector(const Vec3& v) { return v / v.length(); }
 inline double dot(const Vec3& v1, const Vec3& v2) {
   return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z();
 }
+inline Vec3 cross(const Vec3& v1, const Vec3& v2) {
+  // return Vec3(v1.y() * v2.z() - v1.z() * v2.y(),
+  //             -(v1.x() * v2.z() - v1.z() * v2.x()),
+  //             v1.x() * v2.y() - v1.y() * v2.x());
+  return Vec3(v1.y() * v2.z() - v1.z() * v2.y(),
+              v1.z() * v2.x() - v1.x() * v2.z(),
+              v1.x() * v2.y() - v1.y() * v2.x());
+}
 // [-1, 1] -> [0, 1]
 inline Vec3 normalize(const Vec3& v) { return (v + 1) * 0.5; }
 // [0, 1] -> [0, 255]
@@ -163,7 +167,7 @@ class Hitable;
 class Material;
 
 struct HitRecord {
-  double t;          // paramter of ray
+  double t;         // paramter of ray
   Vec3 p;           // ray at point
   Vec3 normal;      // normal vector of this point
   Hitable* target;  // hitted target, for debug
@@ -180,8 +184,12 @@ class Hitable {
 class Sphere : public Hitable {
  public:
   Sphere() {}
-  Sphere(Vec3 center, double radius, Material *mat, const std::string& name)
+  Sphere(Vec3 center, double radius, Material* mat, const std::string& name)
       : center_(center), radius_(radius), mat_(mat), name_(name) {}
+  Sphere(Vec3 center, double radius, Material* mat)
+      : center_(center), radius_(radius), mat_(mat) {
+    name_ = "unknowm sphere";
+  }
 
   bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
@@ -190,7 +198,7 @@ class Sphere : public Hitable {
 
   Vec3 center_;
   double radius_;
-  Material *mat_;
+  Material* mat_;
   std::string name_;
 };
 
@@ -232,6 +240,8 @@ class HitableList : public Hitable {
   HitableList(Hitable** list, int size) : list_(list), size_(size) {}
   bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
+  int size() { return size_; }
+  Hitable** list() { return list_; }
 
   std::string Name() { return "HitableList"; }
 
@@ -266,26 +276,96 @@ class Camera {
   // fov: field of view, 视野, 角度
   // aspect: 宽高比
   Camera(double vfov, double aspect) {
+    // Camera 相关的数学原理请参考: FOCG, p144, 7.1.3 The Camera Transformation
     double theta = vfov * M_PI / 180;
     double half_height = tan(theta / 2);
     double half_width = aspect * half_height;
 
     origin_ = Vec3(0, 0, 0);
-    horizontal_ = half_width * 2;
-    vertical_ = half_height * 2;
-    lower_left_corner_ = 
+    horizontal_ = Vec3(half_width * 2, 0, 0);
+    vertical_ = Vec3(0, half_height * 2, 0);
+    lower_left_corner_ = Vec3(-half_width, -half_height, -1.0);
+  }
+
+  Camera(const Vec3& lookfrom, const Vec3& lookat, Vec3 vup, double vfov,
+         double aspect) {
+    // Camera 相关的数学原理请参考: FOCG, p144, 7.1.3 The Camera Transformation
+    double theta = vfov * M_PI / 180;
+    double half_height = tan(theta / 2);
+    double half_width = aspect * half_height;
+
+    origin_ = lookfrom;
+    // 计算符合右手法则的uvw
+    // w: camera 所看方向的反方向
+    auto w = unit_vector(lookfrom - lookat);
+    // u 必定跟 vup 和 w 垂直
+    auto u = unit_vector(cross(vup, w));
+    // v 跟w,u垂直
+    auto v = cross(w, u);
+
+    lower_left_corner_ = origin_ - half_width * u - half_height * v - w;
+    horizontal_ = 2 * half_width * u;
+    vertical_ = 2 * half_height * v;
+  }
+
+  // Defoucs blur, 散焦模糊??
+  // 这部分书上没找到相关内容 :(
+  Camera(const Vec3& lookfrom, const Vec3& lookat, Vec3 vup, double vfov,
+         double aspect, double aperture, double focus_dist) {
+    lens_radius_ = aperture / 2;
+    double theta = vfov * M_PI / 180;
+    double half_height = tan(theta / 2);
+    double half_width = aspect * half_height;
+
+    origin_ = lookfrom;
+    // 计算符合右手法则的uvw
+    // w: camera 所看方向的反方向
+    auto w = unit_vector(lookfrom - lookat);
+    // u 必定跟 vup 和 w 垂直
+    auto u = unit_vector(cross(vup, w));
+    // v 跟w,u垂直
+    auto v = cross(w, u);
+
+    lower_left_corner_ = origin_ - half_width * focus_dist * u -
+                         half_height * focus_dist * v - focus_dist * w;
+    horizontal_ = 2 * half_width * focus_dist * u;
+    vertical_ = 2 * half_height * focus_dist * v;
+
+    w_ = w;
+    u_ = u;
+    v_ = v;
   }
 
   // 指定UV, 返回指向screen的一条射线
   // UV range [0, 1]
-  Ray GetRay(double u, double v) {
-    return Ray(origin_,
-               lower_left_corner_ + u * horizontal_ + v * vertical_ - origin_);
+  Ray GetRay(double s, double t) const {
+    if (lens_radius_ > 0) {
+      Vec3 rd = lens_radius_ * random_in_unit_disk();
+      Vec3 offset = u_ * rd.x() + v_ * rd.y();
+      return Ray(origin_ + offset, lower_left_corner_ + s * horizontal_ +
+                                       t * vertical_ - origin_ - offset);
+    } else {
+      return Ray(origin_, lower_left_corner_ + s * horizontal_ + t * vertical_ -
+                              origin_);
+    }
+  }
+
+ private:
+  Vec3 random_in_unit_disk() const {
+    Vec3 p;
+    do {
+      // 随机数是 [0, 1)
+      // 但我们需要 (-1, 1)
+      p = 2.0 * Vec3(Rand(), Rand(), 0) - Vec3(1, 1, 0);
+    } while (dot(p, p) >= 1.0);  // 如果随机点不在sphere内,就继续找
+    return p;
   }
   Vec3 origin_;
   Vec3 lower_left_corner_;
   Vec3 horizontal_;
   Vec3 vertical_;
+  Vec3 u_, v_, w_;
+  double lens_radius_ = 0;
 };
 
 // 终于到了材质这一步
@@ -327,7 +407,7 @@ class Metal : public Material {
  public:
   // fuzz: 对反射后的ray加一个随机摆动
   // 个人觉得fuzz为0时更像镜子的反射，加了fuzz之后更像金属的反射
-  Metal(const Vec3& a, double fuzz): albedo_(a), fuzz_(fuzz) {
+  Metal(const Vec3& a, double fuzz) : albedo_(a), fuzz_(fuzz) {
     if (fuzz_ > 1) fuzz_ = 1;
   }
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
@@ -371,13 +451,14 @@ Vec3 Metal::reflect(const Vec3& v, const Vec3& n) const {
 // 折射的数学原理参考 FOCG, p325
 class Dielectric : public Material {
  public:
-  Dielectric(double ref_idx): ref_idx_(ref_idx) {}
+  Dielectric(double ref_idx) : ref_idx_(ref_idx) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
                Ray* scattered) const override;
   Vec3 reflect(const Vec3& v, const Vec3& n) const;
 
  private:
-  bool refract(const Vec3& v, const Vec3& n, double ni_over_nt, Vec3 *refracted) const;
+  bool refract(const Vec3& v, const Vec3& n, double ni_over_nt,
+               Vec3* refracted) const;
   double schlick(double cosine, double ref_idx) const;
   // 参考折射率
   // 空气:1, 水:1.33-1.34, 窗户玻璃: 1.51, 光学玻璃: 1.49-1.92, 钻石: 2.42
@@ -387,15 +468,15 @@ class Dielectric : public Material {
 // 折射的数学原理参考 FOCG, p325
 // tips:
 // To add transparent materials to our code, we need a way to determine when
-// a ray is going “into” an object. The simplest way to do this is to assume that all
-// objects are embedded in air with refractive index very close to 1.0, and that surface
-// normals point “out” (toward the air).
-bool Dielectric::refract(const Vec3& v, const Vec3& n, double ni_over_nt, Vec3 *refracted) const {
+// a ray is going “into” an object. The simplest way to do this is to assume
+// that all objects are embedded in air with refractive index very close to 1.0,
+// and that surface normals point “out” (toward the air).
+bool Dielectric::refract(const Vec3& v, const Vec3& n, double ni_over_nt,
+                         Vec3* refracted) const {
   auto unit_v = unit_vector(v);
   auto dt = dot(unit_v, n);
   auto discriminat = 1 - (ni_over_nt * ni_over_nt * (1 - dt * dt));
-  if (discriminat <= 0)
-    return false;
+  if (discriminat <= 0) return false;
   *refracted = ni_over_nt * (unit_v - n * dt) / 1 - n * sqrt(discriminat);
   return true;
 }
@@ -410,12 +491,12 @@ Vec3 Dielectric::reflect(const Vec3& v, const Vec3& n) const {
 
 double Dielectric::schlick(double cosine, double ref_idx) const {
   double r0 = (1 - ref_idx) / (1 + ref_idx);
-  r0 = r0*r0;
+  r0 = r0 * r0;
   return r0 + (1 - r0) * pow(1 - cosine, 5);
 }
 
-bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
-                         Ray* scattered) const {
+bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec,
+                         Vec3* attenuation, Ray* scattered) const {
   Vec3 outward_normal;
   Vec3 reflected = reflect(ray_in.direction(), rec.normal);
   Vec3 refracted;
@@ -423,7 +504,7 @@ bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuat
   double reflect_prob;
   double cosine;
 
-  *attenuation = Vec3(1.0, 1.0, 1.0); // 全反射
+  *attenuation = Vec3(1.0, 1.0, 1.0);  // 全反射
 
   // 这里我们总是假设材质外是空气， 折射率是1， 简化了计算
   if (dot(ray_in.direction(), rec.normal) > 0) {
@@ -431,11 +512,12 @@ bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuat
     outward_normal = -rec.normal;
     ni_over_nt = ref_idx_;
     // ni_over_nt = 1 / ref_idx_;
-    cosine = ref_idx_ * dot(ray_in.direction(), rec.normal) / ray_in.direction().length();
+    cosine = ref_idx_ * dot(ray_in.direction(), rec.normal) /
+             ray_in.direction().length();
   } else {
     // 材质由内至外发生折射
-    // 由于外部是空气，折射率是1， 根据 Snell's Law: 入射介质折射率*sin(入射角) = 折射介质折射率*sin(折射角)
-    // 两边都除以入射介质折射率:
+    // 由于外部是空气，折射率是1， 根据 Snell's Law: 入射介质折射率*sin(入射角)
+    // = 折射介质折射率*sin(折射角) 两边都除以入射介质折射率:
     outward_normal = rec.normal;
     // ni_over_nt = ref_idx_;
     ni_over_nt = 1 / ref_idx_;
@@ -453,7 +535,6 @@ bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuat
   *scattered = Ray(rec.p, reflected);
   return true;
 }
-  
 
 void test_vec3() {
   {
@@ -613,8 +694,10 @@ void test_two_sphere() {
 
   // 构造2个球体
   Hitable* list[2];
-  list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_1");
-  list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
+  list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)),
+                       "sphere_1");
+  list[1] = new Sphere(Vec3(0, -100.5, -1), 100,
+                       new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
   Hitable* world = new HitableList(list, 2);
 
   auto color_of_ray = [](const Ray& ray, Hitable* world) -> Vec3 {
@@ -725,8 +808,10 @@ class TestDiffuse {
 
     // 构造2个球体
     Hitable* list[2];
-    list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_1");
-    list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
+    list[0] = new Sphere(Vec3(0, 0, -1), 0.5,
+                         new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_1");
+    list[1] = new Sphere(Vec3(0, -100.5, -1), 100,
+                         new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
     Hitable* world = new HitableList(list, 2);
 
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
@@ -764,8 +849,11 @@ void test_diffuse() {
 
 class TestMetal {
  private:
+  Camera* camera_ = nullptr;
+  const char* output_ = NULL;
+
   // depth 控制反射次数
-  Vec3 color_of_ray(const Ray& ray, Hitable *world, int depth) {
+  Vec3 color_of_ray(const Ray& ray, Hitable* world, int depth) {
     HitRecord rec;
 
     if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
@@ -775,7 +863,7 @@ class TestMetal {
       if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered)) {
         return attenuation * color_of_ray(scattered, world, depth + 1);
       } else {
-        return Vec3(0, 0, 0); // black
+        return Vec3(0, 0, 0);  // black
       }
     } else {
       // 未命中blend蓝白
@@ -786,24 +874,105 @@ class TestMetal {
       return RGB((1 - t) * white + t * blue);
     }
   }
+
  public:
+  TestMetal(const char* output) {
+    output_ = output;
+    camera_ = new Camera();
+  }
+  TestMetal(const char* output, Camera* camera) : camera_(camera) {
+    output_ = output;
+  }
   void Run() {
     std::vector<int> data;
-    int nx = 800;
-    int ny = 400;
+    int nx = 200;
+    int ny = 100;
     int ns = 100;  // for antialiasing
 
-    Camera camera;
-
     Hitable* list[5];
-    list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.8, 0.3, 0.3)), "sphere_1");
-    list[1] = new Sphere(Vec3(0, -100.5, -1), 100, new Lambertian(Vec3(0.8, 0.8, 0.0)), "sphere_2");
-    list[2] = new Sphere(Vec3(1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.6, 0.2), 0.3), "sphere_3");
-    // list[3] = new Sphere(Vec3(-1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.8, 0.8), 1.0), "sphere_4");
+    list[0] = new Sphere(Vec3(0, 0, -1), 0.5,
+                         new Lambertian(Vec3(0.8, 0.3, 0.3)), "sphere_1");
+    list[1] = new Sphere(Vec3(0, -100.5, -1), 100,
+                         new Lambertian(Vec3(0.8, 0.8, 0.0)), "sphere_2");
+    list[2] = new Sphere(Vec3(1, 0, -1), 0.5,
+                         new Metal(Vec3(0.8, 0.6, 0.2), 0.3), "sphere_3");
+    // list[3] = new Sphere(Vec3(-1, 0, -1), 0.5, new Metal(Vec3(0.8, 0.8,
+    // 0.8), 1.0), "sphere_4");
     list[3] = new Sphere(Vec3(-1, 0, -1), 0.5, new Dielectric(1.5), "sphere_4");
-    list[4] = new Sphere(Vec3(-1, 0, -1), -0.45, new Dielectric(1.5), "sphere_5");
-    
+    list[4] =
+        new Sphere(Vec3(-1, 0, -1), -0.45, new Dielectric(1.5), "sphere_5");
+
     Hitable* world = new HitableList(list, 5);
+
+    // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
+    for (int i = ny - 1; i >= 0; i--) {
+      for (int j = 0; j < nx; j++) {
+        Vec3 color(0, 0, 0);
+        // 抗锯齿, 随机ns次与附近的颜色平均
+        for (int s = 0; s < ns; s++) {
+          // 计算当前像素点的uv (相对于左下角的偏移)
+          double u = double(j + Rand()) / double(nx);
+          double v = double(i + Rand()) / double(ny);
+          auto ray = camera_->GetRay(u, v);
+          color += color_of_ray(ray, world, 0);
+        }
+        color /= double(ns);
+
+        data.push_back(color.x());
+        data.push_back(color.y());
+        data.push_back(color.z());
+      }
+    }
+
+    write_ppm(output_, nx, ny, data);
+
+    delete world;
+    delete list[0];
+    delete list[1];
+    delete list[2];
+    delete list[3];
+    delete list[4];
+  }
+};
+
+void test_metal() {
+  TestMetal test("test_metal.ppm");
+  test.Run();
+}
+
+class BaseTest {
+ public:
+  // depth 控制反射次数
+  virtual Vec3 color_of_ray(const Ray& ray, Hitable* world, int depth) {
+    HitRecord rec;
+
+    if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
+      Ray scattered;
+      Vec3 attenuation;
+
+      if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered)) {
+        return attenuation * color_of_ray(scattered, world, depth + 1);
+      } else {
+        return Vec3(0, 0, 0);  // black
+      }
+    } else {
+      // 未命中blend蓝白
+      auto white = Vec3(1, 1, 1);
+      auto blue = Vec3(0.5, 0.7, 1.0);
+      auto unit = unit_vector(ray.direction());
+      auto t = (unit.y() + 1.0) * 0.5;
+      return RGB((1 - t) * white + t * blue);
+    }
+  }
+
+  virtual Hitable* CreateWorld() = 0;
+  virtual void DestroyWorld(Hitable* world) = 0;
+
+  void Scan(int nx, int ny, const Camera& camera, const char* output) {
+    std::vector<int> data;
+    int ns = 100;  // for antialiasing
+
+    Hitable* world = CreateWorld();
 
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
     for (int i = ny - 1; i >= 0; i--) {
@@ -818,41 +987,202 @@ class TestMetal {
           color += color_of_ray(ray, world, 0);
         }
         color /= double(ns);
-
         data.push_back(color.x());
         data.push_back(color.y());
         data.push_back(color.z());
       }
     }
 
-    write_ppm("test_metal.ppm", nx, ny, data);
+    write_ppm(output, nx, ny, data);
+    DestroyWorld(world);
+  }
 
-    delete world;
-    delete list[0];
-    delete list[1];
-    delete list[2];
-    delete list[3];
-    delete list[4];
+  void Render(int nx, int ny, const Camera& camera, const char* output) {
+    const int thread_count = 8;
+    int ns = 100;  // for antialiasing
+    Hitable* world = CreateWorld();
+    std::vector<int> data;
+
+    data.resize(nx * ny * 3);
+
+    printf("total size:%d\n", data.size());
+
+    auto worker = [](int nx, int ny, int ns, int start_y, int count,
+                         const Camera& camera, Hitable* world,
+                         std::vector<int>* data, int offset, BaseTest *env) {
+      // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
+      printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y, start_y - count, offset);
+      for (int i = start_y; i > start_y - count; i--) {
+        for (int j = 0; j < nx; j++) {
+          Vec3 color(0, 0, 0);
+          // 抗锯齿, 随机ns次与附近的颜色平均
+          for (int s = 0; s < ns; s++) {
+            // 计算当前像素点的uv (相对于左下角的偏移)
+            double u = double(j + Rand()) / double(nx);
+            double v = double(i + Rand()) / double(ny);
+            auto ray = camera.GetRay(u, v);
+            color += env->color_of_ray(ray, world, 0);
+          }
+          color /= double(ns);
+          (*data)[offset++] = color.x();
+          (*data)[offset++] = color.y();
+          (*data)[offset++] = color.z();
+        }
+      }
+    };
+
+    int ny_of_per_thread = ny / thread_count;
+    printf("ny_of_per_thread: %d\n", ny_of_per_thread);
+    int rest = ny - (ny_of_per_thread * thread_count);
+    std::vector<std::thread*> vector_of_thread;
+
+    for (int i = 0; i < thread_count; i++) {
+      int start_y = ny - i*ny_of_per_thread;
+      int count = ny_of_per_thread;
+      if (i == thread_count - 1) {
+        count += rest;
+      }
+      int offset = i * ny_of_per_thread * nx * 3;
+      std::thread* thread = new std::thread(worker, nx, ny, ns, start_y, count,
+                                            camera, world, &data, offset, this);
+      vector_of_thread.push_back(thread);
+      printf("create thread %d\n", i);
+    }
+
+    for (int i = 0; i < thread_count; i++) {
+      std::thread* thread = vector_of_thread[i];
+      thread->join();
+    }
+
+    write_ppm(output, nx, ny, data);
+    DestroyWorld(world);
+  }
+
+  virtual void Run() = 0;
+};
+
+class TestCamera : public BaseTest {
+ public:
+  Hitable* CreateWorld() override {
+    Hitable** p = new (Hitable* [2]);
+
+    double r = cos(M_PI / 4);
+    p[0] = new Sphere(Vec3(-r, 0, -1), r, new Lambertian(Vec3(0, 0, 1)),
+                      "sphere_1");
+    p[1] = new Sphere(Vec3(r, 0, -1), r, new Lambertian(Vec3(1, 0, 0)),
+                      "sphere_2");
+
+    return new HitableList(p, 2);
+  }
+
+  void DestroyWorld(Hitable* world) override {
+    HitableList* list = dynamic_cast<HitableList*>(world);
+    Hitable** plist = list->list();
+    for (int i = 0; i < list->size(); i++) {
+      delete plist[i];
+    }
+    delete list;
+  }
+
+  void Run() {
+    Camera camera(90, 200 / 200);
+    Render(200, 100, camera, "test_camera.ppm");
   }
 };
 
-void test_metal() {
-  TestMetal test;
+void test_camera() {
+  TestCamera test;
+  test.Run();
+
+  auto* camera1 =
+      new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2);
+  TestMetal test1("test_camera2.ppm", camera1);
+  test1.Run();
+ 
+  auto* camera2 =
+      new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 30, 2);
+  TestMetal test2("test_camera3.ppm", camera2);
+  test2.Run();
+
+  double dist_to_focus = (Vec3(-2, 2, 1) - Vec3(0, 0, -1)).length();
+  auto* camera3 = new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 30,
+                             2, 2.0, dist_to_focus);
+  TestMetal test3("test_camera4.ppm", camera3);
+  test3.Run();
+}
+
+class TestRandomWorld : public BaseTest {
+ public:
+  Hitable* CreateWorld() override {
+    int n = 500;
+    Hitable** list = new Hitable*[n + 1];
+    list[0] = new Sphere(Vec3(0, -1000, 0), 1000,
+                         new Lambertian(Vec3(0.5, 0.5, 0.5)));
+    int i = 1;
+    for (int a = -11; a < 11; a++) {
+      for (int b = -11; b < 11; b++) {
+        float choose_mat = Rand();
+        Vec3 center(a + 0.9 * Rand(), 0.2, b + 0.9 * Rand());
+        if ((center - Vec3(4, 0.2, 0)).length() > 0.9) {
+          if (choose_mat < 0.8) {  // diffuse
+            list[i++] =
+                new Sphere(center, 0.2,
+                           new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
+                                               Rand() * Rand())));
+          } else if (choose_mat < 0.95) {  // metal
+            list[i++] = new Sphere(
+                center, 0.2,
+                new Metal(Vec3(0.5 * (1 + Rand()), 0.5 * (1 + Rand()),
+                               0.5 * (1 + Rand())),
+                          0.5 * Rand()));
+          } else {  // glass
+            list[i++] = new Sphere(center, 0.2, new Dielectric(1.5));
+          }
+        }
+      }
+    }
+
+    list[i++] = new Sphere(Vec3(0, 1, 0), 1.0, new Dielectric(1.5));
+    list[i++] =
+        new Sphere(Vec3(-4, 1, 0), 1.0, new Lambertian(Vec3(0.4, 0.2, 0.1)));
+    list[i++] =
+        new Sphere(Vec3(4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0));
+
+    return new HitableList(list, i);
+  }
+
+  void DestroyWorld(Hitable* world) override {}
+
+  void Run() {
+    double dist_to_focus = (Vec3(-2, 2, 1) - Vec3(0, 0, -1)).length();
+    Camera camera1(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 60, 2);
+    Render(800, 400, camera1, "test_random_world_1.ppm");
+    // Camera camera2(Vec3(0, 0, 0), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2);
+    // Scan(800, 400, camera2, "test_random_world_2.ppm");
+  }
+};
+
+void test_random_world() {
+  TestRandomWorld test;
   test.Run();
 }
 
 void run_test() {
-  test_vec3();
-  test_ppm_output();
-  test_linear_blend_blue_to_white();
-  test_two_sphere();
-  test_diffuse();
-  test_metal();
+  // test_vec3();
+  // test_ppm_output();
+  // test_linear_blend_blue_to_white();
+  // test_two_sphere();
+  // test_diffuse();
+  // test_metal();
+  test_camera();
+  test_random_world();
 }
 
 int main() {
   srand(time(NULL));
+  std::cout << time(NULL) << std::endl;
   run_test();
+  std::cout << time(NULL) << std::endl;
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
