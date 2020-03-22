@@ -1,4 +1,4 @@
-﻿//
+//
 // Notes:
 // 1. FOCG 指 <Fundamentals of Computer Graphics> 4th, Peter Shirley & Steve
 // Marschner
@@ -143,9 +143,10 @@ double Rand() {
 class Ray {
  public:
   Ray() {}
-  Ray(const Vec3& a, const Vec3& b) {
+  Ray(const Vec3& a, const Vec3& b, double time = 0) {
     a_ = a;
     b_ = b;
+    time_ = time;
   }
 
   std::string ToString() const {
@@ -159,8 +160,10 @@ class Ray {
   Vec3 origin() const { return a_; }
   Vec3 direction() const { return b_; }
   Vec3 point_at_parameter(double t) const { return a_ + t * b_; }
+  double time() const { return time_; }
   Vec3 a_;  // 原点
   Vec3 b_;  // 方向
+  double time_;
 };
 
 class Hitable;
@@ -228,6 +231,69 @@ bool Sphere::Hit(const Ray& ray, double t_min, double t_max,
   rec->t = t;
   rec->p = ray.point_at_parameter(t);
   rec->normal = (rec->p - center_) / radius_;
+  rec->mat = mat_;
+  rec->target = (Hitable*)this;
+  // printf("Sphere::Hit: %f\n", t);
+  return true;
+}
+
+class MovingSphere : public Hitable {
+ public:
+  MovingSphere(Vec3 center0, Vec3 center1, double t0, double t1, double radius,
+               Material* mat, const std::string& name)
+      : center0_(center0),
+        center1_(center1),
+        time0_(t0),
+        time1_(t1),
+        radius_(radius),
+        mat_(mat),
+        name_(name) {}
+
+  bool Hit(const Ray& ray, double t_min, double t_max, HitRecord* rec) const;
+  std::string Name() override { return name_; }
+
+  // 给定时间计算出 center
+  // 由于 Sphere 是移动的, 获取其圆心就必须指定获取哪一时刻的圆心
+  Vec3 center(double time) const;
+
+  Vec3 center0_;
+  Vec3 center1_;
+  double time0_;
+  double time1_;
+  double radius_;
+  Material* mat_;
+  std::string name_;
+};
+
+Vec3 MovingSphere::center(double time) const {
+  return center0_ +
+         ((time - time0_) / (time1_ - time0_)) * (center1_ - center0_);
+}
+
+bool MovingSphere::Hit(const Ray& ray, double t_min, double t_max,
+                       HitRecord* rec) const {
+  Vec3 oc = ray.origin() - center(ray.time());
+  double a = dot(ray.direction(), ray.direction());
+  double b = 2 * dot(ray.direction(), oc);
+  double c = dot(oc, oc) - radius_ * radius_;
+
+  // 射线检测 sphere 的方程是一个二元一次方程, discriminat 用来判定方程是否有解
+  // see FOCG, p77
+  double discriminat = b * b - 4 * a * c;
+  // imaginary
+  if (discriminat <= 0) return false;
+
+  double t = (-b - sqrt(discriminat)) / (2 * a);
+  if (t <= t_min || t >= t_max) {
+    t = (-b + sqrt(discriminat)) / (2 * a);
+    if (t <= t_min || t >= t_max) {
+      return false;
+    }
+  }
+
+  rec->t = t;
+  rec->p = ray.point_at_parameter(t);
+  rec->normal = (rec->p - center(ray.time())) / radius_;
   rec->mat = mat_;
   rec->target = (Hitable*)this;
   // printf("Sphere::Hit: %f\n", t);
@@ -311,7 +377,8 @@ class Camera {
   // Defoucs blur, 散焦模糊??
   // 这部分书上没找到相关内容 :(
   Camera(const Vec3& lookfrom, const Vec3& lookat, Vec3 vup, double vfov,
-         double aspect, double aperture, double focus_dist) {
+         double aspect, double aperture, double focus_dist, double t0 = 0,
+         double t1 = 0) {
     lens_radius_ = aperture / 2;
     double theta = vfov * M_PI / 180;
     double half_height = tan(theta / 2);
@@ -334,19 +401,28 @@ class Camera {
     w_ = w;
     u_ = u;
     v_ = v;
+
+    time0_ = t0;
+    time1_ = t1;
   }
 
   // 指定UV, 返回指向screen的一条射线
   // UV range [0, 1]
   Ray GetRay(double s, double t) const {
+    // 生成一个介于 time0 time1 之间的随机时间
+    double time = 0;
+    if (time0_ != time1_) time = time0_ + Rand() * (time1_ - time0_);
     if (lens_radius_ > 0) {
       Vec3 rd = lens_radius_ * random_in_unit_disk();
       Vec3 offset = u_ * rd.x() + v_ * rd.y();
-      return Ray(origin_ + offset, lower_left_corner_ + s * horizontal_ +
-                                       t * vertical_ - origin_ - offset);
+      return Ray(origin_ + offset,
+                 lower_left_corner_ + s * horizontal_ + t * vertical_ -
+                     origin_ - offset,
+                 time);
     } else {
-      return Ray(origin_, lower_left_corner_ + s * horizontal_ + t * vertical_ -
-                              origin_);
+      return Ray(origin_,
+                 lower_left_corner_ + s * horizontal_ + t * vertical_ - origin_,
+                 time);
     }
   }
 
@@ -365,6 +441,8 @@ class Camera {
   Vec3 horizontal_;
   Vec3 vertical_;
   Vec3 u_, v_, w_;
+  double time0_;
+  double time1_;
   double lens_radius_ = 0;
 };
 
@@ -398,7 +476,7 @@ class Lambertian : public Material {
 bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
                          Vec3* attenuation, Ray* scattered) const {
   Vec3 target = rec.p + rec.normal + random_in_unit_sphere();
-  *scattered = Ray(rec.p, target - rec.p);
+  *scattered = Ray(rec.p, target - rec.p, ray_in.time());
   *attenuation = albedo_;
   return true;
 }
@@ -1008,10 +1086,11 @@ class BaseTest {
     printf("total size:%d\n", data.size());
 
     auto worker = [](int nx, int ny, int ns, int start_y, int count,
-                         const Camera& camera, Hitable* world,
-                         std::vector<int>* data, int offset, BaseTest *env) {
+                     const Camera& camera, Hitable* world,
+                     std::vector<int>* data, int offset, BaseTest* env) {
       // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
-      printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y, start_y - count, offset);
+      printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y,
+             start_y - count, offset);
       for (int i = start_y; i > start_y - count; i--) {
         for (int j = 0; j < nx; j++) {
           Vec3 color(0, 0, 0);
@@ -1032,12 +1111,11 @@ class BaseTest {
     };
 
     int ny_of_per_thread = ny / thread_count;
-    printf("ny_of_per_thread: %d\n", ny_of_per_thread);
     int rest = ny - (ny_of_per_thread * thread_count);
     std::vector<std::thread*> vector_of_thread;
 
     for (int i = 0; i < thread_count; i++) {
-      int start_y = ny - i*ny_of_per_thread;
+      int start_y = ny - i * ny_of_per_thread;
       int count = ny_of_per_thread;
       if (i == thread_count - 1) {
         count += rest;
@@ -1098,7 +1176,7 @@ void test_camera() {
       new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2);
   TestMetal test1("test_camera2.ppm", camera1);
   test1.Run();
- 
+
   auto* camera2 =
       new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 30, 2);
   TestMetal test2("test_camera3.ppm", camera2);
@@ -1126,9 +1204,17 @@ class TestRandomWorld : public BaseTest {
         if ((center - Vec3(4, 0.2, 0)).length() > 0.9) {
           if (choose_mat < 0.8) {  // diffuse
             list[i++] =
+#if 0
                 new Sphere(center, 0.2,
                            new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
                                                Rand() * Rand())));
+#else
+                new MovingSphere(
+                    center, center + Vec3(0, 0.5 * Rand(), 0), 0, 1, 0.2,
+                    new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
+                                        Rand() * Rand())),
+                    "MovingSphere");
+#endif
           } else if (choose_mat < 0.95) {  // metal
             list[i++] = new Sphere(
                 center, 0.2,
@@ -1154,11 +1240,21 @@ class TestRandomWorld : public BaseTest {
   void DestroyWorld(Hitable* world) override {}
 
   void Run() {
-    double dist_to_focus = (Vec3(-2, 2, 1) - Vec3(0, 0, -1)).length();
-    Camera camera1(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 60, 2);
-    Render(800, 400, camera1, "test_random_world_1.ppm");
-    // Camera camera2(Vec3(0, 0, 0), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2);
-    // Scan(800, 400, camera2, "test_random_world_2.ppm");
+    Vec3 lookfrom = Vec3(-2, 2, 1);
+    Vec3 lookat = Vec3(0, 0, -1);
+    double dist_to_focus = (lookfrom - lookat).length();
+    double aperture = 0;
+#if 0
+    Camera camera1(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2, aperture, dist_to_focus);
+    Render(400, 200, camera1, "test_random_world_1.ppm");
+#endif
+    lookfrom = Vec3(13, 2, 3);
+    lookat = Vec3(0, 0, 0);
+    dist_to_focus = 10;
+    (lookfrom - lookat).length();
+    Camera camera2(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0), 20, 2,
+                   aperture, dist_to_focus, 0, 1);
+    Render(400, 200, camera2, "test_random_world_2.ppm");
   }
 };
 
@@ -1184,15 +1280,3 @@ int main() {
   run_test();
   std::cout << time(NULL) << std::endl;
 }
-
-// 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
-// 调试程序: F5 或调试 >“开始调试”菜单
-
-// 入门使用技巧:
-//   1. 使用解决方案资源管理器窗口添加/管理文件
-//   2. 使用团队资源管理器窗口连接到源代码管理
-//   3. 使用输出窗口查看生成输出和其他消息
-//   4. 使用错误列表窗口查看错误
-//   5.
-//   转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
-//   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
