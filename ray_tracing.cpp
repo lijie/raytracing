@@ -33,11 +33,6 @@
 #include "dielectric.h"
 #include "render.h"
 
-
-// 折射材质
-// 折射的数学原理参考 FOCG, p325
-
-
 void test_vec3() {
   {
     auto a = Vec3(1, 1, 1);

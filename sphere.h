@@ -1,6 +1,7 @@
 #ifndef __SPHERE_H__
 #define __SPHERE_H__
 
+#include "aabb.h"
 #include "hitable.h"
 
 class Material;
@@ -17,6 +18,7 @@ class Sphere : public Hitable {
 
   bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
+  bool BoundingBox(double t0, double t1, AABB* box) const override;
 
   std::string Name() override { return name_; }
 
@@ -58,4 +60,10 @@ bool Sphere::Hit(const Ray& ray, double t_min, double t_max,
   return true;
 }
 
-#endif // __SPHERE_H__
+bool Sphere::BoundingBox(double t0, double t1, AABB* box) const {
+  *box = AABB(center_ - Vec3(radius_, radius_, radius_),
+              center_ + Vec3(radius_, radius_, radius_));
+  return true;
+}
+
+#endif  // __SPHERE_H__

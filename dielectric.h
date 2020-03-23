@@ -4,6 +4,8 @@
 #include "material.h"
 #include "rand.h"
 
+// 折射材质
+// 折射的数学原理参考 FOCG, p325
 class Dielectric : public Material {
  public:
   Dielectric(double ref_idx) : ref_idx_(ref_idx) {}
