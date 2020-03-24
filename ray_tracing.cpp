@@ -32,6 +32,7 @@
 #include "metal.h"
 #include "dielectric.h"
 #include "render.h"
+#include "bvh.h"
 
 void test_vec3() {
   {
@@ -400,6 +401,7 @@ class TestMetal {
         new Sphere(Vec3(-1, 0, -1), -0.45, new Dielectric(1.5), "sphere_5");
 
     Hitable* world = new HitableList(list, 5);
+    BvhNode *bvh_world = new BvhNode(list, 5, 0, 0);
 
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
     for (int i = ny - 1; i >= 0; i--) {
@@ -411,7 +413,7 @@ class TestMetal {
           double u = double(j + Rand()) / double(nx);
           double v = double(i + Rand()) / double(ny);
           auto ray = camera_->GetRay(u, v);
-          color += color_of_ray(ray, world, 0);
+          color += color_of_ray(ray, bvh_world, 0);
         }
         color /= double(ns);
 
@@ -488,16 +490,17 @@ class TestCamera : public BaseTest {
     p[1] = new Sphere(Vec3(r, 0, -1), r, new Lambertian(Vec3(1, 0, 0)),
                       "sphere_2");
 
-    return new HitableList(p, 2);
+    // return new HitableList(p, 2);
+    return new BvhNode(p, 2, 0, 0);
   }
 
   void DestroyWorld(Hitable* world) override {
-    HitableList* list = dynamic_cast<HitableList*>(world);
-    Hitable** plist = list->list();
-    for (int i = 0; i < list->size(); i++) {
-      delete plist[i];
-    }
-    delete list;
+    // HitableList* list = dynamic_cast<HitableList*>(world);
+    // Hitable** plist = list->list();
+    // for (int i = 0; i < list->size(); i++) {
+    //   delete plist[i];
+    // }
+    // delete list;
   }
 
   void Run() {
@@ -573,6 +576,7 @@ class TestRandomWorld : public BaseTest {
         new Sphere(Vec3(4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0));
 
     return new HitableList(list, i);
+    // return new BvhNode(list, i, 0, 1);
   }
 
   void DestroyWorld(Hitable* world) override {}
@@ -592,13 +596,73 @@ class TestRandomWorld : public BaseTest {
     (lookfrom - lookat).length();
     Camera camera2(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0), 20, 2,
                    aperture, dist_to_focus, 0, 1);
-    Render(400, 200, camera2, "test_random_world_2.ppm");
+    Render(800, 400, camera2, "test_random_world_2.ppm");
   }
 };
 
 void test_random_world() {
   TestRandomWorld test;
   test.Run();
+}
+
+// 改造一下之前的函数测试bvh
+void test_two_bvh_1() {
+  std::vector<int> data;
+  int nx = 200;
+  int ny = 100;
+  int ns = 100;  // for antialiasing
+
+  Camera camera;
+
+  // 构造2个球体
+  Hitable* list[2];
+  list[0] = new Sphere(Vec3(0, 0, -1), 0.5, new Lambertian(Vec3(0.5, 0.5, 0.5)),
+                       "sphere_1");
+  list[1] = new Sphere(Vec3(0, -100.5, -1), 100,
+                       new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
+  Hitable* world = new HitableList(list, 2);
+  BvhNode *bvh_world = new BvhNode(list, 2, 0, 0);
+
+  auto color_of_ray = [](const Ray& ray, Hitable* world) -> Vec3 {
+    HitRecord rec;
+    if (world->Hit(ray, 0.0, __FLT_MAX__, &rec)) {
+      // 命中的话我们用法向量转RGB作为color
+      return RGB(normalize(rec.normal));
+    } else {
+      // 未命中blend蓝白
+      auto white = Vec3(1, 1, 1);
+      auto blue = Vec3(0.5, 0.7, 1.0);
+      auto unit = unit_vector(ray.direction());
+      auto t = (unit.y() + 1.0) * 0.5;
+      return RGB((1 - t) * white + t * blue);
+    }
+  };
+
+  // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
+  for (int i = ny - 1; i >= 0; i--) {
+    for (int j = 0; j < nx; j++) {
+      Vec3 color(0, 0, 0);
+      // 抗锯齿, 随机ns次与附近的颜色平均
+      for (int s = 0; s < ns; s++) {
+        // 计算当前像素点的uv (相对于左下角的偏移)
+        double u = double(j + Rand()) / double(nx);
+        double v = double(i + Rand()) / double(ny);
+        auto ray = camera.GetRay(u, v);
+        color += color_of_ray(ray, bvh_world);
+      }
+      color /= double(ns);
+
+      data.push_back(color.x());
+      data.push_back(color.y());
+      data.push_back(color.z());
+    }
+  }
+
+  write_ppm("test_two_sphere_bvh.ppm", nx, ny, data);
+
+  delete world;
+  delete list[0];
+  delete list[1];
 }
 
 void run_test() {
@@ -608,8 +672,9 @@ void run_test() {
   // test_two_sphere();
   // test_diffuse();
   // test_metal();
-  test_camera();
+  // test_camera();
   test_random_world();
+  // test_two_bvh_1();
 }
 
 int main() {

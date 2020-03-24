@@ -18,6 +18,7 @@ class MovingSphere : public Hitable {
         name_(name) {}
 
   bool Hit(const Ray& ray, double t_min, double t_max, HitRecord* rec) const;
+  bool BoundingBox(double t0, double t1, AABB* box) const;
   std::string Name() override { return name_; }
 
   // 给定时间计算出 center
@@ -65,6 +66,15 @@ bool MovingSphere::Hit(const Ray& ray, double t_min, double t_max,
   rec->mat = mat_;
   rec->target = (Hitable*)this;
   // printf("Sphere::Hit: %f\n", t);
+  return true;
+}
+
+bool MovingSphere::BoundingBox(double t0, double t1, AABB* box) const {
+  auto box_t0 = AABB(center(t0) - Vec3(radius_, radius_, radius_),
+                     center(t0) + Vec3(radius_, radius_, radius_));
+  auto box_t1 = AABB(center(t1) - Vec3(radius_, radius_, radius_),
+                     center(t1) + Vec3(radius_, radius_, radius_));
+  *box = AABB::SurroudingBox(box_t0, box_t1);
   return true;
 }
 
