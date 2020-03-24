@@ -476,7 +476,7 @@ class BaseTest {
     DestroyWorld(world);
   }
 
-  virtual void Run() = 0;
+  virtual void Run(const char *output) = 0;
 };
 
 class TestCamera : public BaseTest {
@@ -503,7 +503,7 @@ class TestCamera : public BaseTest {
     // delete list;
   }
 
-  void Run() {
+  void Run(const char *output) {
     Camera camera(90, 200 / 200);
     Render(200, 100, camera, "test_camera.ppm");
   }
@@ -511,7 +511,7 @@ class TestCamera : public BaseTest {
 
 void test_camera() {
   TestCamera test;
-  test.Run();
+  test.Run("");
 
   auto* camera1 =
       new Camera(Vec3(-2, 2, 1), Vec3(0, 0, -1), Vec3(0, 1, 0), 90, 2);
@@ -532,11 +532,22 @@ void test_camera() {
 
 class TestRandomWorld : public BaseTest {
  public:
+  virtual Hitable * CreateDiffuseSphere(const Vec3& center, double r) {
+    return new MovingSphere(
+        center, center + Vec3(0, 0.5 * Rand(), 0), 0, 1, r,
+        new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
+                            Rand() * Rand())),
+        "MovingSphere");
+  }
+
+  virtual Hitable * CreateBaseSphere(const Vec3 center, double r) {
+    return new Sphere(center, r, new Lambertian(Vec3(0.5, 0.5, 0.5)));
+  }
+  
   Hitable* CreateWorld() override {
     int n = 500;
     Hitable** list = new Hitable*[n + 1];
-    list[0] = new Sphere(Vec3(0, -1000, 0), 1000,
-                         new Lambertian(Vec3(0.5, 0.5, 0.5)));
+    list[0] = CreateBaseSphere(Vec3(0, -1000, 0), 1000);
     int i = 1;
     for (int a = -11; a < 11; a++) {
       for (int b = -11; b < 11; b++) {
@@ -550,11 +561,7 @@ class TestRandomWorld : public BaseTest {
                            new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
                                                Rand() * Rand())));
 #else
-                new MovingSphere(
-                    center, center + Vec3(0, 0.5 * Rand(), 0), 0, 1, 0.2,
-                    new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
-                                        Rand() * Rand())),
-                    "MovingSphere");
+            CreateDiffuseSphere(center, 0.2);
 #endif
           } else if (choose_mat < 0.95) {  // metal
             list[i++] = new Sphere(
@@ -581,7 +588,7 @@ class TestRandomWorld : public BaseTest {
 
   void DestroyWorld(Hitable* world) override {}
 
-  void Run() {
+  void Run(const char *output) {
     Vec3 lookfrom = Vec3(-2, 2, 1);
     Vec3 lookat = Vec3(0, 0, -1);
     double dist_to_focus = (lookfrom - lookat).length();
@@ -596,13 +603,14 @@ class TestRandomWorld : public BaseTest {
     (lookfrom - lookat).length();
     Camera camera2(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0), 20, 2,
                    aperture, dist_to_focus, 0, 1);
-    Render(800, 400, camera2, "test_random_world_2.ppm");
+    // Render(800, 400, camera2, "test_random_world_2.ppm");
+    Render(400, 200, camera2, output);
   }
 };
 
 void test_random_world() {
   TestRandomWorld test;
-  test.Run();
+  test.Run("test_random_world_2.ppm");
 }
 
 // 改造一下之前的函数测试bvh
@@ -665,6 +673,21 @@ void test_two_bvh_1() {
   delete list[1];
 }
 
+class TestRandomWorldWithTexture : public TestRandomWorld {
+ public:
+  Hitable * CreateBaseSphere(const Vec3 center, double r) override {
+    Texture *t0 = new ConstantTexture(Vec3(0.8, 0.2, 0.2));
+    Texture *t1 = new ConstantTexture(Vec3(0.9, 0.9, 0.9));
+    Texture *tex = new CheckerTexture(t0, t1, 10);
+    return new Sphere(center, r, new Lambertian(tex));
+  }
+};
+
+void test_texture_1() {
+  TestRandomWorldWithTexture test;
+  test.Run("test_texture_1.ppm");
+}
+
 void run_test() {
   // test_vec3();
   // test_ppm_output();
@@ -673,8 +696,9 @@ void run_test() {
   // test_diffuse();
   // test_metal();
   // test_camera();
-  test_random_world();
+  // test_random_world();
   // test_two_bvh_1();
+  test_texture_1();
 }
 
 int main() {

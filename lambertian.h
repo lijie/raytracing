@@ -1,12 +1,16 @@
 #ifndef __LAMBERTIAN_H__
 #define __LAMBERTIAN_H__
 
+#include "texture.h"
 #include "material.h"
 #include "rand.h"
 
 class Lambertian : public Material {
  public:
-  Lambertian(const Vec3& a) : albedo_(a) {}
+  Lambertian(const Vec3& a) {
+    albedo_ = new ConstantTexture(a);
+  }
+  Lambertian(Texture *tex) : albedo_(tex) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
                Ray* scattered) const override;
 
@@ -21,14 +25,14 @@ class Lambertian : public Material {
     } while (dot(p, p) >= 1.0);  // 如果随机点不在sphere内,就继续找
     return p;
   }
-  Vec3 albedo_;
+  Texture *albedo_;
 };
 
 bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
                          Vec3* attenuation, Ray* scattered) const {
   Vec3 target = rec.p + rec.normal + random_in_unit_sphere();
   *scattered = Ray(rec.p, target - rec.p, ray_in.time());
-  *attenuation = albedo_;
+  *attenuation = albedo_->Value(0, 0, rec.p);
   return true;
 }
 
