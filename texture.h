@@ -3,6 +3,9 @@
 
 #include "vec3.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 class Texture {
  public:
   virtual Vec3 Value(double u, double v, const Vec3& point) const = 0;
@@ -40,27 +43,34 @@ class CheckerTexture : public Texture {
 class ImageTexture : public Texture {
  public:
   ImageTexture() {}
-  ImageTexture(char *data, int nx, int ny):data_(data), nx_(nx), ny_(ny) {}
+  ImageTexture(unsigned char *data, int nx, int ny):data_(data), nx_(nx), ny_(ny) {}
   ImageTexture(const char *path);
   Vec3 Value(double u, double v, const Vec3& point) const override {
-    int i = u * nx;
+    // printf("try get uv: %f, %f\n", u, v);
+    int i = u * nx_;
     // 图片从左上角开始，但是v从底部开始
-    int j = (1 - v) * ny - 0.001;
+    int j = (1 - v) * ny_ - 0.001;
     if (i < 0) i = 0;
     if (j < 0) j = 0;
-    if (i >= nx) i = nx - 1;
-    if (j >= ny) j = ny - 1;
-    double r = int(data[nx * j * 3 + i * 3 + 0]) / 255.0;
-    double g = int(data[nx * j * 3 + i * 3 + 1]) / 255.0;
-    double r = int(data[nx * j * 3 + i * 3 + 2]) / 255.0;
+    if (i >= nx_) i = nx_ - 1;
+    if (j >= ny_) j = ny_ - 1;
+    double r = int(data_[nx_ * j * 3 + i * 3 + 0]) / 255.0;
+    double g = int(data_[nx_ * j * 3 + i * 3 + 1]) / 255.0;
+    double b = int(data_[nx_ * j * 3 + i * 3 + 2]) / 255.0;
     return Vec3(r, g, b);
   };
 
-  char *data_;
+  unsigned char *data_;
   int nx_, ny_;
 };
 
 ImageTexture::ImageTexture(const char *path) {
+  int comp;
+  data_ = stbi_load(path, &nx_, &ny_, &comp, 3);
+  if (data_ == NULL) {
+    assert(0);
+  }
+  printf("load image: %s, %dx%d, channel:%d\n", path, nx_, ny_, comp);
 }
 
 #endif  // __TEXTURE_H__

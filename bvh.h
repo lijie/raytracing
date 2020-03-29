@@ -2,6 +2,7 @@
 
 #include "hitable.h"
 #include "aabb.h"
+#include "rand.h"
 
 class BvhNode : public Hitable {
  public:

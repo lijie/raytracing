@@ -19,20 +19,20 @@
 #include <thread>
 #include <vector>
 
-#include "rand.h"
-#include "vec3.h"
-#include "ray.h"
+#include "bvh.h"
+#include "camera.h"
+#include "dielectric.h"
 #include "hitable.h"
 #include "hitable_list.h"
-#include "sphere.h"
-#include "moving_sphere.h"
-#include "camera.h"
-#include "material.h"
 #include "lambertian.h"
+#include "material.h"
 #include "metal.h"
-#include "dielectric.h"
+#include "moving_sphere.h"
+#include "rand.h"
+#include "ray.h"
 #include "render.h"
-#include "bvh.h"
+#include "sphere.h"
+#include "vec3.h"
 
 void test_vec3() {
   {
@@ -401,7 +401,7 @@ class TestMetal {
         new Sphere(Vec3(-1, 0, -1), -0.45, new Dielectric(1.5), "sphere_5");
 
     Hitable* world = new HitableList(list, 5);
-    BvhNode *bvh_world = new BvhNode(list, 5, 0, 0);
+    BvhNode* bvh_world = new BvhNode(list, 5, 0, 0);
 
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
     for (int i = ny - 1; i >= 0; i--) {
@@ -466,8 +466,9 @@ class BaseTest {
 
   virtual Hitable* CreateWorld() = 0;
   virtual void DestroyWorld(Hitable* world) = 0;
-  
-  virtual void Render(int nx, int ny, const Camera& camera, const char* output) {
+
+  virtual void Render(int nx, int ny, const Camera& camera,
+                      const char* output) {
     Renderer renderer;
     Hitable* world = CreateWorld();
     std::vector<int> data;
@@ -476,7 +477,7 @@ class BaseTest {
     DestroyWorld(world);
   }
 
-  virtual void Run(const char *output) = 0;
+  virtual void Run(const char* output) = 0;
 };
 
 class TestCamera : public BaseTest {
@@ -503,7 +504,7 @@ class TestCamera : public BaseTest {
     // delete list;
   }
 
-  void Run(const char *output) {
+  void Run(const char* output) {
     Camera camera(90, 200 / 200);
     Render(200, 100, camera, "test_camera.ppm");
   }
@@ -532,18 +533,27 @@ void test_camera() {
 
 class TestRandomWorld : public BaseTest {
  public:
-  virtual Hitable * CreateDiffuseSphere(const Vec3& center, double r) {
+  virtual Hitable* CreateDiffuseSphere(const Vec3& center, double r) {
     return new MovingSphere(
         center, center + Vec3(0, 0.5 * Rand(), 0), 0, 1, r,
-        new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
-                            Rand() * Rand())),
+        new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(), Rand() * Rand())),
         "MovingSphere");
   }
 
-  virtual Hitable * CreateBaseSphere(const Vec3 center, double r) {
+  virtual Hitable* CreateBaseSphere(const Vec3 center, double r) {
     return new Sphere(center, r, new Lambertian(Vec3(0.5, 0.5, 0.5)));
   }
-  
+
+  virtual Material* CreateMainSphereMaterial1() {
+    return new Dielectric(1.5);
+  }
+  virtual Material* CreateMainSphereMaterial2() {
+    return new Lambertian(Vec3(0.4, 0.2, 0.1));
+  }
+  virtual Material* CreateMainSphereMaterial3() {
+    return new Metal(Vec3(0.7, 0.6, 0.5), 0.0);
+  }
+
   Hitable* CreateWorld() override {
     int n = 500;
     Hitable** list = new Hitable*[n + 1];
@@ -561,7 +571,7 @@ class TestRandomWorld : public BaseTest {
                            new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(),
                                                Rand() * Rand())));
 #else
-            CreateDiffuseSphere(center, 0.2);
+                CreateDiffuseSphere(center, 0.2);
 #endif
           } else if (choose_mat < 0.95) {  // metal
             list[i++] = new Sphere(
@@ -576,19 +586,19 @@ class TestRandomWorld : public BaseTest {
       }
     }
 
-    list[i++] = new Sphere(Vec3(0, 1, 0), 1.0, new Dielectric(1.5));
+    list[i++] = new Sphere(Vec3(0, 1, 0), 1.0, CreateMainSphereMaterial1());
     list[i++] =
-        new Sphere(Vec3(-4, 1, 0), 1.0, new Lambertian(Vec3(0.4, 0.2, 0.1)));
+        new Sphere(Vec3(-4, 1, 0), 1.0, CreateMainSphereMaterial2());
     list[i++] =
-        new Sphere(Vec3(4, 1, 0), 1.0, new Metal(Vec3(0.7, 0.6, 0.5), 0.0));
+        new Sphere(Vec3(4, 1, 0), 1.0, CreateMainSphereMaterial3());
 
-    return new HitableList(list, i);
-    // return new BvhNode(list, i, 0, 1);
+    // return new HitableList(list, i);
+    return new BvhNode(list, i, 0, 1);
   }
 
   void DestroyWorld(Hitable* world) override {}
 
-  void Run(const char *output) {
+  void Run(const char* output) {
     Vec3 lookfrom = Vec3(-2, 2, 1);
     Vec3 lookat = Vec3(0, 0, -1);
     double dist_to_focus = (lookfrom - lookat).length();
@@ -604,7 +614,7 @@ class TestRandomWorld : public BaseTest {
     Camera camera2(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0), 20, 2,
                    aperture, dist_to_focus, 0, 1);
     // Render(800, 400, camera2, "test_random_world_2.ppm");
-    Render(400, 200, camera2, output);
+    Render(800, 400, camera2, output);
   }
 };
 
@@ -629,7 +639,7 @@ void test_two_bvh_1() {
   list[1] = new Sphere(Vec3(0, -100.5, -1), 100,
                        new Lambertian(Vec3(0.5, 0.5, 0.5)), "sphere_2");
   Hitable* world = new HitableList(list, 2);
-  BvhNode *bvh_world = new BvhNode(list, 2, 0, 0);
+  BvhNode* bvh_world = new BvhNode(list, 2, 0, 0);
 
   auto color_of_ray = [](const Ray& ray, Hitable* world) -> Vec3 {
     HitRecord rec;
@@ -675,10 +685,10 @@ void test_two_bvh_1() {
 
 class TestRandomWorldWithTexture : public TestRandomWorld {
  public:
-  Hitable * CreateBaseSphere(const Vec3 center, double r) override {
-    Texture *t0 = new ConstantTexture(Vec3(0.8, 0.2, 0.2));
-    Texture *t1 = new ConstantTexture(Vec3(0.9, 0.9, 0.9));
-    Texture *tex = new CheckerTexture(t0, t1, 10);
+  Hitable* CreateBaseSphere(const Vec3 center, double r) override {
+    Texture* t0 = new ConstantTexture(Vec3(0.8, 0.2, 0.2));
+    Texture* t1 = new ConstantTexture(Vec3(0.9, 0.9, 0.9));
+    Texture* tex = new CheckerTexture(t0, t1, 10);
     return new Sphere(center, r, new Lambertian(tex));
   }
 };
@@ -686,6 +696,53 @@ class TestRandomWorldWithTexture : public TestRandomWorld {
 void test_texture_1() {
   TestRandomWorldWithTexture test;
   test.Run("test_texture_1.ppm");
+}
+
+class TestTextureEarth : public BaseTest {
+ public:
+  Hitable* CreateWorld() override;
+  void DestroyWorld(Hitable* world) override;
+  void Run(const char* output);
+};
+
+Hitable* TestTextureEarth::CreateWorld() {
+  auto texture = new ImageTexture("earthmap.jpg");
+  auto earth_surface = new Lambertian(texture);
+  return new Sphere(Vec3(0, 0, 0), 2, earth_surface, "sphere_1");
+}
+
+void TestTextureEarth::DestroyWorld(Hitable* world) {}
+
+void TestTextureEarth::Run(const char* output) {
+  Vec3 lookfrom = Vec3(-2, 2, 1);
+  Vec3 lookat = Vec3(0, 0, -1);
+  double dist_to_focus = (lookfrom - lookat).length();
+  double aperture = 0;
+  lookfrom = Vec3(13, 2, 3);
+  lookat = Vec3(0, 0, 0);
+  dist_to_focus = 10;
+  (lookfrom - lookat).length();
+  Camera camera2(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0), 20, 2, aperture,
+                 dist_to_focus, 0, 1);
+  Render(400, 200, camera2, output);
+}
+
+void test_texture_earth() {
+  TestTextureEarth test;
+  test.Run("test_texture_earth.ppm");
+}
+
+class TestRandomWorldWithEarthTexture : public TestRandomWorld {
+  public:
+    Material *CreateMainSphereMaterial3() {
+      auto texture = new ImageTexture("earthmap.jpg");
+      return new Lambertian(texture);
+    }
+};
+
+void test_random_world_earth_texture() {
+  TestRandomWorldWithEarthTexture test;
+  test.Run("test_random_world_earth_texture.ppm");
 }
 
 void run_test() {
@@ -698,7 +755,9 @@ void run_test() {
   // test_camera();
   // test_random_world();
   // test_two_bvh_1();
-  test_texture_1();
+  // test_texture_1();
+  // test_texture_earth();
+  test_random_world_earth_texture();
 }
 
 int main() {

@@ -52,14 +52,14 @@ void Renderer::Render(int nx, int ny, const Camera& camera,
 
   data->resize(nx * ny * 3);
 
-  printf("total size:%d\n", data->size());
+  // printf("total size:%d\n", data->size());
 
   auto worker = [](int nx, int ny, int ns, int start_y, int count,
                    const Camera& camera, const Hitable* world, std::vector<int>* data,
                    int offset, Renderer* env) {
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
-    printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y,
-           start_y - count, offset);
+    // printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y,
+    //        start_y - count, offset);
     for (int i = start_y; i > start_y - count; i--) {
       for (int j = 0; j < nx; j++) {
         Vec3 color(0, 0, 0);
@@ -93,7 +93,7 @@ void Renderer::Render(int nx, int ny, const Camera& camera,
     std::thread* thread = new std::thread(worker, nx, ny, ns, start_y, count,
                                           camera, world, data, offset, this);
     vector_of_thread.push_back(thread);
-    printf("create thread %d\n", i);
+    // printf("create thread %d\n", i);
   }
 
   for (int i = 0; i < thread_count; i++) {

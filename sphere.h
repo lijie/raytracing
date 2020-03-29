@@ -26,10 +26,10 @@ class Sphere : public Hitable {
   // phi = atan2(y, x)
   // theta = asin(z)
   static void GetUV(const Vec3& point, double *u, double *v) {
-    double phi = atan2(point.y(), point.x()); // atan2 返回 [-pi, pi]
-    double theta = asin(p.z());// asin 返回 [-pi/2, pi/2]
-    u = 1 - (phi + M_PI) / (2 * M_PI);
-    v = (theta + M_PI/2) / M_PI;
+    double phi = atan2(point.z(), point.x()); // atan2 返回 [-pi, pi]
+    double theta = asin(point.y());// asin 返回 [-pi/2, pi/2]
+    *u = 1 - (phi + M_PI) / (2 * M_PI);
+    *v = (theta + M_PI/2) / M_PI;
   }
 
   std::string Name() override { return name_; }
@@ -68,6 +68,7 @@ bool Sphere::Hit(const Ray& ray, double t_min, double t_max,
   rec->normal = (rec->p - center_) / radius_;
   rec->mat = mat_;
   rec->target = (Hitable*)this;
+  GetUV((rec->p - center_) / radius_, &rec->u, &rec->v);
   // printf("Sphere::Hit: %f\n", t);
   return true;
 }

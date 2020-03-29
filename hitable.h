@@ -14,6 +14,8 @@ struct HitRecord {
   double t;         // paramter of ray
   Vec3 p;           // ray at point
   Vec3 normal;      // normal vector of this point
+  double u;
+  double v;
   Hitable* target;  // hitted target, for debug
   Material* mat;
 };
