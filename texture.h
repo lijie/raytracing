@@ -37,4 +37,30 @@ class CheckerTexture : public Texture {
   double width_;
 };
 
+class ImageTexture : public Texture {
+ public:
+  ImageTexture() {}
+  ImageTexture(char *data, int nx, int ny):data_(data), nx_(nx), ny_(ny) {}
+  ImageTexture(const char *path);
+  Vec3 Value(double u, double v, const Vec3& point) const override {
+    int i = u * nx;
+    // 图片从左上角开始，但是v从底部开始
+    int j = (1 - v) * ny - 0.001;
+    if (i < 0) i = 0;
+    if (j < 0) j = 0;
+    if (i >= nx) i = nx - 1;
+    if (j >= ny) j = ny - 1;
+    double r = int(data[nx * j * 3 + i * 3 + 0]) / 255.0;
+    double g = int(data[nx * j * 3 + i * 3 + 1]) / 255.0;
+    double r = int(data[nx * j * 3 + i * 3 + 2]) / 255.0;
+    return Vec3(r, g, b);
+  };
+
+  char *data_;
+  int nx_, ny_;
+};
+
+ImageTexture::ImageTexture(const char *path) {
+}
+
 #endif  // __TEXTURE_H__

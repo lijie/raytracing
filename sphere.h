@@ -20,6 +20,18 @@ class Sphere : public Hitable {
            HitRecord* rec) const override;
   bool BoundingBox(double t0, double t1, AABB* box) const override;
 
+  // 球形坐标系
+  // u = phi / 2pi
+  // v = theta / pi
+  // phi = atan2(y, x)
+  // theta = asin(z)
+  static void GetUV(const Vec3& point, double *u, double *v) {
+    double phi = atan2(point.y(), point.x()); // atan2 返回 [-pi, pi]
+    double theta = asin(p.z());// asin 返回 [-pi/2, pi/2]
+    u = 1 - (phi + M_PI) / (2 * M_PI);
+    v = (theta + M_PI/2) / M_PI;
+  }
+
   std::string Name() override { return name_; }
 
   Vec3 center_;
