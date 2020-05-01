@@ -544,9 +544,7 @@ class TestRandomWorld : public BaseTest {
     return new Sphere(center, r, new Lambertian(Vec3(0.5, 0.5, 0.5)));
   }
 
-  virtual Material* CreateMainSphereMaterial1() {
-    return new Dielectric(1.5);
-  }
+  virtual Material* CreateMainSphereMaterial1() { return new Dielectric(1.5); }
   virtual Material* CreateMainSphereMaterial2() {
     return new Lambertian(Vec3(0.4, 0.2, 0.1));
   }
@@ -587,10 +585,8 @@ class TestRandomWorld : public BaseTest {
     }
 
     list[i++] = new Sphere(Vec3(0, 1, 0), 1.0, CreateMainSphereMaterial1());
-    list[i++] =
-        new Sphere(Vec3(-4, 1, 0), 1.0, CreateMainSphereMaterial2());
-    list[i++] =
-        new Sphere(Vec3(4, 1, 0), 1.0, CreateMainSphereMaterial3());
+    list[i++] = new Sphere(Vec3(-4, 1, 0), 1.0, CreateMainSphereMaterial2());
+    list[i++] = new Sphere(Vec3(4, 1, 0), 1.0, CreateMainSphereMaterial3());
 
     // return new HitableList(list, i);
     return new BvhNode(list, i, 0, 1);
@@ -733,11 +729,14 @@ void test_texture_earth() {
 }
 
 class TestRandomWorldWithEarthTexture : public TestRandomWorld {
-  public:
-    Material *CreateMainSphereMaterial3() {
-      auto texture = new ImageTexture("earthmap.jpg");
-      return new Lambertian(texture);
-    }
+ public:
+  Material* CreateMainSphereMaterial3() {
+    auto texture = new ImageTexture("zelda.gif");
+    return new Lambertian(texture);
+  }
+  Material* CreateMainSphereMaterial2() {
+    return new Metal(Vec3(0.7, 0.6, 0.5), 0.0);
+  }
 };
 
 void test_random_world_earth_texture() {
