@@ -1,0 +1,3 @@
+## GPU Ray Tracing
+
+把 C++ 版的代码用 GLSL 实现跑在 GPU 上, 速度快多了...
