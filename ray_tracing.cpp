@@ -534,9 +534,12 @@ void test_camera() {
 class TestRandomWorld : public BaseTest {
  public:
   virtual Hitable* CreateDiffuseSphere(const Vec3& center, double r) {
+    auto a = Vec3(Rand() * Rand(), Rand() * Rand(), Rand() * Rand());
+    // printf("world_add(sphere_new(vec3(%f, %f, %f), %f, material_new_lambertian(vec3(%f, %f, %f))));\n",
+        // center.x(), center.y(), center.z(), r, a.x(), a.y(), a.z());
     return new MovingSphere(
         center, center + Vec3(0, 0.5 * Rand(), 0), 0, 1, r,
-        new Lambertian(Vec3(Rand() * Rand(), Rand() * Rand(), Rand() * Rand())),
+        new Lambertian(a),
         "MovingSphere");
   }
 
@@ -572,12 +575,14 @@ class TestRandomWorld : public BaseTest {
                 CreateDiffuseSphere(center, 0.2);
 #endif
           } else if (choose_mat < 0.95) {  // metal
-            list[i++] = new Sphere(
-                center, 0.2,
-                new Metal(Vec3(0.5 * (1 + Rand()), 0.5 * (1 + Rand()),
-                               0.5 * (1 + Rand())),
-                          0.5 * Rand()));
+          auto albedo = Vec3(0.5 * (1 + Rand()), 0.5 * (1 + Rand()), 0.5 * (1 + Rand()));
+          double fuzz = 0.5 * Rand();
+          // printf("world_add(sphere_new(vec3(%f, %f, %f), %f, material_new_mental(vec3(%f, %f, %f), %f)));\n",
+          // center.x(), center.y(), center.z(), 0.2, albedo.x(), albedo.y(), albedo.z(), fuzz);
+            list[i++] = new Sphere(center, 0.2, new Metal(albedo, fuzz));
           } else {  // glass
+          // printf("world_add(sphere_new(vec3(%f, %f, %f), %f, material_new_dielectric(%f)));\n",
+          // center.x(), center.y(), center.z(), 0.2, 1.5);
             list[i++] = new Sphere(center, 0.2, new Dielectric(1.5));
           }
         }
@@ -752,11 +757,11 @@ void run_test() {
   // test_diffuse();
   // test_metal();
   // test_camera();
-  // test_random_world();
+  test_random_world();
   // test_two_bvh_1();
   // test_texture_1();
   // test_texture_earth();
-  test_random_world_earth_texture();
+  // test_random_world_earth_texture();
 }
 
 int main() {

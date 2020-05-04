@@ -390,8 +390,7 @@ void main()
     ray r = camera_get_ray(c, uv);
     vec3 color = ray_color_depth(r, 50);
 
-    if(prev.w > 500.0)
-    {
+    if (prev.w > 500.0) {
         gl_FragColor = prev;
         return;
     }
