@@ -13,7 +13,7 @@ class Scene {
   void Run();
 
   void AddHitable(Hitable *obj);
-  Hitable *GetRoot();
+  Hitable *GetRoot() { return world_; }
   void SetOutput(const char *path);
   void SetCamera(Camera *c) { camera_ = c; };
   void SetScreenSize(double width, double height) {

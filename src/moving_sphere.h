@@ -2,6 +2,7 @@
 #define __MOVING_SPHERE_H__
 
 #include "hitable.h"
+#include "aabb.h"
 
 class Material;
 

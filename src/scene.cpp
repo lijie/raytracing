@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "bvh.h"
 #include "render.h"
 
 static void write_ppm(const char* filename, int nx, int ny,
@@ -32,10 +33,13 @@ void Scene::SetOutput(const char* path) { output_file_path_ = path; }
 void Scene::AddHitable(Hitable* obj) { pending_vec_.push_back(obj); }
 
 void Scene::Run() {
+  world_ = new BvhNode(pending_vec_, 0, 1);
   Renderer renderer;
   Hitable* world = GetRoot();
   std::vector<int> data;
   renderer.Render(width_, height_, *camera_, world, &data);
   write_ppm(output_file_path_, width_, height_, data);
+  delete world_;
+  world_ = nullptr;
   Destroy();
 }

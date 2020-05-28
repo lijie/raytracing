@@ -1,5 +1,7 @@
 // Bounding Volume Hierarchical Tree
 
+#include <assert.h>
+#include <vector>
 #include "hitable.h"
 #include "aabb.h"
 #include "rand.h"
@@ -8,12 +10,14 @@ class BvhNode : public Hitable {
  public:
   BvhNode() {}
   BvhNode(Hitable **list, int size, double t0, double t1);
+  BvhNode(const std::vector<Hitable*> hitable_vec, double t0, double t1);
   bool Hit(const Ray& ray, double t_min, double t_max,
            HitRecord* rec) const override;
   bool BoundingBox(double t0, double t1, AABB* box) const override;
   std::string Name() override { return "BvhNode"; };
 
  private:
+  void Build(Hitable **list, int size, double t0, double t1);
   AABB box_;
   Hitable *l_;
   Hitable *r_;
@@ -67,7 +71,7 @@ static int bvh_node_compare_z(const void *a, const void *b) {
 }
 
 // 构造 bvh tree
-BvhNode::BvhNode(Hitable **list, int size, double t0, double t1) {
+void BvhNode::Build(Hitable **list, int size, double t0, double t1) {
   // 随机选一个 axis 作为排序依据
   int axis = int(3 * Rand());
 
@@ -100,6 +104,20 @@ BvhNode::BvhNode(Hitable **list, int size, double t0, double t1) {
     assert(0);
   }
   box_ = AABB::SurroudingBox(left_box, right_box);
+}
+
+BvhNode::BvhNode(const std::vector<Hitable*> hitable_vec, double t0, double t1) {
+  auto n = hitable_vec.size();
+  Hitable** list = new Hitable*[n + 1];
+  for (size_t i = 0; i < n; i++) {
+    list[i] = hitable_vec[i];
+  }
+  Build(list, n, t0, t1);
+}
+
+// 构造 bvh tree
+BvhNode::BvhNode(Hitable **list, int size, double t0, double t1) {
+  Build(list, size, t0, t1);
 }
 
 bool BvhNode::Hit(const Ray& ray, double t_min, double t_max,
