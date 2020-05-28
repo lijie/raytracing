@@ -8,11 +8,14 @@ class Material;
 class XYRect : public Hitable {
  public:
   XYRect(double x0, double x1, double y0, double y1, double k, Material *mat)
-      : x0_(x0), y0_(y0), x1_(x1), y1_(y1), k_(k), material_(mat) {}
+      : x0_(x0), y0_(y0), x1_(x1), y1_(y1), k_(k), material_(mat) {
+    if (x0_ > x1_) std::swap(x0_, x1_);
+    if (y0_ > y1_) std::swap(y0_, y1_);
+  }
   bool Hit(const Ray &ray, double t_min, double t_max,
            HitRecord *rec) const override;
   bool BoundingBox(double t0, double t1, AABB *box) const override;
-  virtual std::string Name() override;
+  virtual std::string Name() override { return "XYRect"; };
 
  private:
   double x0_, x1_, y0_, y1_, k_;
@@ -33,7 +36,12 @@ bool XYRect::Hit(const Ray &ray, double t_min, double t_max,
   rec->u = (x - x0_) / (x1_ - x0_);
   rec->v = (y - x0_) / (y1_ - y0_);
   rec->normal = Vec3(0, 0, 1);
-  // rec->target = this;
+  rec->target = const_cast<XYRect *>(this);
+  return true;
+}
+
+bool XYRect::BoundingBox(double t0, double t1, AABB *box) const {
+  *box = AABB(Vec3(x0_, y0_, k_ - 0.0001), Vec3(x1_, y1_, k_ + 0.0001));
   return true;
 }
 

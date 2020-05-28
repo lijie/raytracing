@@ -24,8 +24,8 @@ class RectLightScene : public Scene {
     lookat = Vec3(0, 0, 0);
     dist_to_focus = 10;
     (lookfrom - lookat).length();
-    Camera* camera2 = new Camera(Vec3(13, 2, 3), Vec3(0, 0, 0), Vec3(0, 1, 0),
-                                 20, 2, aperture, dist_to_focus, 0, 1);
+    Camera* camera2 = new Camera(lookfrom, lookat, Vec3(0, 1, 0),
+                                 60, 2, aperture, dist_to_focus, 0, 1);
     SetCamera(camera2);
   }
 

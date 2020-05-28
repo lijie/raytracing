@@ -3,6 +3,8 @@
 
 #include <vector>
 
+#include "ray.h"
+
 class Hitable;
 class Camera;
 
@@ -13,13 +15,15 @@ class Scene {
   void Run();
 
   void AddHitable(Hitable *obj);
-  Hitable *GetRoot() { return world_; }
+  Hitable *GetRoot() const { return world_; }
   void SetOutput(const char *path);
   void SetCamera(Camera *c) { camera_ = c; };
   void SetScreenSize(double width, double height) {
     width_ = width;
     height_ = height;
   }
+
+  virtual Vec3 BackgroundColor(const Ray &ray) const;
 
  protected:
   virtual void OnCreate() {}

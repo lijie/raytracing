@@ -3,9 +3,11 @@
 #include <iostream>
 
 #include "RandomWorld.h"
+#include "RectLight.h"
 
 static void run_scene() {
-    auto scene = new TestRandomWorld();
+    // auto scene = new TestRandomWorld();
+    auto scene = new RectLightScene();
     scene->Create();
     scene->Run();
 }
