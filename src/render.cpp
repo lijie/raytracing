@@ -32,11 +32,21 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene& scene, int depth) {
   }
 }
 
+static void GammaCorrection(int samples_per_pixel, Vec3 *color) {
+    auto scale = 1.0 / samples_per_pixel;
+    
+    auto r = sqrt(scale * color->r());
+    auto g = sqrt(scale * color->g());
+    auto b = sqrt(scale * color->b());
+
+    *color = Vec3(r, g, b);
+}
+
 // Render entire world
 void Renderer::Render(int nx, int ny, const Camera& camera, const Scene& scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
-  int ns = 100;  // for antialiasing
+  int ns = 1000;  // for antialiasing
 
   data->resize(nx * ny * 3);
 
@@ -59,7 +69,10 @@ void Renderer::Render(int nx, int ny, const Camera& camera, const Scene& scene,
           auto ray = camera.GetRay(u, v);
           color += env->color_of_ray(ray, scene, 0);
         }
-        color /= double(ns);
+        // color /= double(ns);
+
+        GammaCorrection(ns, &color);
+
         color = RGB(color);
         (*data)[offset++] = color.x();
         (*data)[offset++] = color.y();

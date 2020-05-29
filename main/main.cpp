@@ -4,10 +4,12 @@
 
 #include "RandomWorld.h"
 #include "RectLight.h"
+#include "CornellBox.h"
 
 static void run_scene() {
     // auto scene = new TestRandomWorld();
-    auto scene = new RectLightScene();
+    // auto scene = new RectLightScene();
+    auto scene = new CornellBox();
     scene->Create();
     scene->Run();
 }
