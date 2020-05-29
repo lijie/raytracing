@@ -37,7 +37,7 @@ void Scene::Run() {
   Renderer renderer;
   Hitable* world = GetRoot();
   std::vector<int> data;
-  renderer.Render(width_, height_, *camera_, *this, &data);
+  renderer.Render(width_, height_, *camera_, this, &data);
   write_ppm(output_file_path_, width_, height_, data);
   delete world_;
   world_ = nullptr;

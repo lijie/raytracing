@@ -9,9 +9,9 @@
 #include "material.h"
 
 // depth 控制反射次数
-Vec3 Renderer::color_of_ray(const Ray& ray, const Scene& scene, int depth) {
+Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
   HitRecord rec;
-  Hitable* world = scene.GetRoot();
+  Hitable* world = scene->GetRoot();
 
   if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
     Ray scattered;
@@ -28,7 +28,7 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene& scene, int depth) {
       return emited;
     }
   } else {
-    return scene.BackgroundColor(ray);
+    return scene->BackgroundColor(ray);
   }
 }
 
@@ -43,17 +43,17 @@ static void GammaCorrection(int samples_per_pixel, Vec3 *color) {
 }
 
 // Render entire world
-void Renderer::Render(int nx, int ny, const Camera& camera, const Scene& scene,
+void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
-  int ns = 1000;  // for antialiasing
+  int ns = 100;  // for antialiasing
 
   data->resize(nx * ny * 3);
 
   // printf("total size:%d\n", data->size());
 
   auto worker = [](int nx, int ny, int ns, int start_y, int count,
-                   const Camera& camera, const Scene& scene,
+                   const Camera& camera, const Scene *scene,
                    std::vector<int>* data, int offset, Renderer* env) {
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
     // printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y,

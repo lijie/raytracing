@@ -17,10 +17,10 @@ class Renderer {
   Renderer(int nr_of_thread = 8): nr_of_thread_(nr_of_thread) {}
 
   // depth 控制反射次数
-  virtual Vec3 color_of_ray(const Ray& ray, const Scene& scene, int depth);
+  virtual Vec3 color_of_ray(const Ray& ray, const Scene *scene, int depth);
 
   // Render entire world
-  void Render(int nx, int ny, const Camera& camera, const Scene& scene,
+  void Render(int nx, int ny, const Camera& camera, const Scene *scene,
               std::vector<int>* data);
 
 };

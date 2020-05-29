@@ -9,6 +9,7 @@
 #include "scene.h"
 #include "sphere.h"
 #include "vec3.h"
+#include "diffuse_light.h"
 
 class TestRandomWorld : public Scene {
  public:
@@ -105,10 +106,7 @@ class TestRandomWorld : public Scene {
     SetupScreen();
   }
 
-  Vec3 BackgroundColor(const Ray& ray) const override;
-};
-
-Vec3 TestRandomWorld::BackgroundColor(const Ray& ray) const {
+  Vec3 BackgroundColor(const Ray& ray) const override {
   // 未命中blend蓝白
     auto white = Vec3(1, 1, 1);
     auto blue = Vec3(0.5, 0.7, 1.0);
@@ -116,5 +114,7 @@ Vec3 TestRandomWorld::BackgroundColor(const Ray& ray) const {
     auto t = (unit.y() + 1.0) * 0.5;
     return (1 - t) * white + t * blue;
 }
+};
+
 
 #endif  // __SCENES_RANDOMWORLD_H__
