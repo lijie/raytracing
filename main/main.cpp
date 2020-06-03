@@ -7,9 +7,9 @@
 #include "CornellBox.h"
 
 static void run_scene() {
-    auto scene = new TestRandomWorld();
+    // auto scene = new TestRandomWorld();
     // auto scene = new RectLightScene();
-    // auto scene = new CornellBox();
+    auto scene = new CornellBox();
     scene->Create();
     scene->Run();
 }

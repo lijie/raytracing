@@ -46,7 +46,7 @@ static void GammaCorrection(int samples_per_pixel, Vec3 *color) {
 void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
-  int ns = 100;  // for antialiasing
+  int ns = 500;  // for antialiasing
 
   data->resize(nx * ny * 3);
 
