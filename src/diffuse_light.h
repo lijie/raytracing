@@ -8,7 +8,7 @@ class DiffuseLight : public Material {
  public:
   DiffuseLight(Texture* tex) : tex_(tex) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
-               Ray* scattered) const override {
+               Ray* scattered, double *pdf) const override {
     return false;
   }
 

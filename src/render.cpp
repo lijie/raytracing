@@ -17,12 +17,13 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
     Ray scattered;
     Vec3 attenuation;
     Vec3 emited = rec.mat->Emmited(rec.u, rec.v, rec.p);
+    double pdf;
 
     // if (rec.target->Name() == "XYRect") {
     //   printf("%f, %f, %f\n", emited.x(), emited.y(), emited.z());
     // }
 
-    if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered)) {
+    if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf)) {
       return emited + attenuation * color_of_ray(scattered, scene, depth + 1);
     } else {
       return emited;

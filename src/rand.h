@@ -9,4 +9,6 @@ inline double Rand() {
   return double(v) / double(RAND_MAX);
 }
 
+// [start, end)
+double RandDouble(double start, double end);
 #endif  // __RAND_H__

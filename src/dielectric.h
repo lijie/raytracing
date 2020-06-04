@@ -10,7 +10,7 @@ class Dielectric : public Material {
  public:
   Dielectric(double ref_idx) : ref_idx_(ref_idx) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
-               Ray* scattered) const override;
+               Ray* scattered, double *pdf) const override;
   Vec3 reflect(const Vec3& v, const Vec3& n) const;
 
  private:
@@ -53,7 +53,7 @@ double Dielectric::schlick(double cosine, double ref_idx) const {
 }
 
 bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec,
-                         Vec3* attenuation, Ray* scattered) const {
+                         Vec3* attenuation, Ray* scattered, double *pdf) const {
   Vec3 outward_normal;
   Vec3 reflected = reflect(ray_in.direction(), rec.normal);
   Vec3 refracted;
@@ -61,6 +61,7 @@ bool Dielectric::Scatter(const Ray& ray_in, const HitRecord& rec,
   double reflect_prob;
   double cosine;
 
+  *pdf = 1.0;
   *attenuation = Vec3(1.0, 1.0, 1.0);  // 全反射
 
   // 这里我们总是假设材质外是空气， 折射率是1， 简化了计算
