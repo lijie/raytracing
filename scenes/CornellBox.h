@@ -15,8 +15,8 @@
 
 class CornellBox : public Scene {
  public:
-  const int width = 400;
-  const int height = 400;
+  const int width = 500;
+  const int height = 500;
   void SetupCamera() {
     Vec3 lookfrom = Vec3(278, 278, -800);
     Vec3 lookat = Vec3(278, 278, 0);

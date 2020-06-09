@@ -42,7 +42,7 @@ bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
   *scattered = Ray(rec.p, target - rec.p, ray_in.time());
   *attenuation = albedo_->Value(rec.u, rec.v, rec.p);
   // TODO(explain)
-  *pdf = dot(rec.normal, scattered->direction()) / M_PI;
+  *pdf = dot(rec.normal, unit_vector(scattered->direction())) / M_PI;
   return true;
 }
 

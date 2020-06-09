@@ -13,6 +13,9 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
   HitRecord rec;
   Hitable* world = scene->GetRoot();
 
+  if (depth == 0)
+    return Vec3(0, 0, 0);
+
   if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
     Ray scattered;
     Vec3 attenuation;
@@ -23,8 +26,8 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
     //   printf("%f, %f, %f\n", emited.x(), emited.y(), emited.z());
     // }
 
-    if (depth < 50 && rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf)) {
-      return emited + attenuation * color_of_ray(scattered, scene, depth + 1);
+    if (rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf)) {
+      return emited + attenuation * rec.mat->ScatteringPdf(ray, rec, scattered) * color_of_ray(scattered, scene, depth - 1) / pdf;
     } else {
       return emited;
     }
@@ -68,7 +71,7 @@ void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
           double u = double(j + Rand()) / double(nx);
           double v = double(i + Rand()) / double(ny);
           auto ray = camera.GetRay(u, v);
-          color += env->color_of_ray(ray, scene, 0);
+          color += env->color_of_ray(ray, scene, 50);
         }
         // color /= double(ns);
 
