@@ -33,8 +33,9 @@ Box::Box(Vec3 p0, Vec3 p1, Material* mat) {
     list.Add(new XYRect(p0.x(), p1.x(), p0.y(), p1.y(), p1.z(), mat));
     list.Add(new FlipFace(new XYRect(p0.x(), p1.x(), p0.y(), p1.y(), p0.z(), mat)));
 
-    list.Add(new FlipFace(new XZRect(p0.x(), p1.x(), p0.z(), p1.z(), p1.y(), mat)));
-    list.Add(new XZRect(p0.x(), p1.x(), p0.z(), p1.z(), p0.y(), mat));
+    // list.Add(new FlipFace(new XZRect(p0.x(), p1.x(), p0.z(), p1.z(), p1.y(), mat)));
+    list.Add(new XZRect(p0.x(), p1.x(), p0.z(), p1.z(), p1.y(), mat));
+    list.Add(new FlipFace(new XZRect(p0.x(), p1.x(), p0.z(), p1.z(), p0.y(), mat)));
 
     list.Add(new FlipFace(new YZRect(p0.y(), p1.y(), p0.z(), p1.z(), p0.x(), mat)));
     list.Add(new YZRect(p0.y(), p1.y(), p0.z(), p1.z(), p1.x(), mat));

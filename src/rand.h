@@ -2,6 +2,7 @@
 #define __RAND_H__
 
 #include <random>
+#include "vec3.h"
 
 // 返回随机数 [0, 1)
 inline double Rand() {
@@ -10,5 +11,7 @@ inline double Rand() {
 }
 
 // [start, end)
-double RandDouble(double start, double end);
+double RandDouble(double start = 0, double end = 1);
+Vec3 RandomCosineDirection();
+
 #endif  // __RAND_H__

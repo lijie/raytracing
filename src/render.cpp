@@ -2,19 +2,19 @@
 
 #include <thread>
 
-#include "hitable.h"
-#include "scene.h"
-#include "rand.h"
 #include "camera.h"
+#include "hitable.h"
 #include "material.h"
+#include "rand.h"
+#include "scene.h"
 
 // depth 控制反射次数
-Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
+Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
+                            bool trace) {
   HitRecord rec;
   Hitable* world = scene->GetRoot();
 
-  if (depth == 0)
-    return Vec3(0, 0, 0);
+  if (depth == 0) return Vec3(0, 0, 0);
 
   if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
     Ray scattered;
@@ -27,7 +27,35 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
     // }
 
     if (rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf)) {
-      return emited + attenuation * rec.mat->ScatteringPdf(ray, rec, scattered) * color_of_ray(scattered, scene, depth - 1) / pdf;
+      // test light sample start
+      auto on_light = Vec3(RandDouble(213, 343), 554, RandDouble(227, 332));
+      auto to_light = on_light - rec.p;
+      auto distance_squared = to_light.suqared_length();
+      to_light = unit_vector(to_light);
+
+      if (dot(to_light, rec.normal) < 0) {
+        if (trace) {
+          printf("no light %s\n", rec.target->Name().c_str());
+        }
+        return emited;
+      }
+
+      double light_area = (343 - 213) * (332 - 227);
+      auto light_cosine = fabs(to_light.y());
+      if (light_cosine < 0.000001) {
+        if (trace) {
+          printf("no light 2\n");
+        }
+        return emited;
+      }
+
+      pdf = distance_squared / (light_cosine * light_area);
+      scattered = Ray(rec.p, to_light, ray.time());
+      // test light sample end
+
+      return emited +
+             attenuation * rec.mat->ScatteringPdf(ray, rec, scattered) *
+                 color_of_ray(scattered, scene, depth - 1, trace) / pdf;
     } else {
       return emited;
     }
@@ -36,18 +64,18 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene *scene, int depth) {
   }
 }
 
-static void GammaCorrection(int samples_per_pixel, Vec3 *color) {
-    auto scale = 1.0 / samples_per_pixel;
-    
-    auto r = sqrt(scale * color->r());
-    auto g = sqrt(scale * color->g());
-    auto b = sqrt(scale * color->b());
+static void GammaCorrection(int samples_per_pixel, Vec3* color) {
+  auto scale = 1.0 / samples_per_pixel;
 
-    *color = Vec3(r, g, b);
+  auto r = sqrt(scale * color->r());
+  auto g = sqrt(scale * color->g());
+  auto b = sqrt(scale * color->b());
+
+  *color = Vec3(r, g, b);
 }
 
 // Render entire world
-void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
+void Renderer::Render(int nx, int ny, const Camera& camera, const Scene* scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
   int ns = 500;  // for antialiasing
@@ -57,7 +85,7 @@ void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
   // printf("total size:%d\n", data->size());
 
   auto worker = [](int nx, int ny, int ns, int start_y, int count,
-                   const Camera& camera, const Scene *scene,
+                   const Camera& camera, const Scene* scene,
                    std::vector<int>* data, int offset, Renderer* env) {
     // 遍历像素点, PPM 定义的像素起始点为左上角, 所以从 ny-1 开始
     // printf("size: %dx%d, worker range %d, %d, offset: %d\n", nx, ny, start_y,
@@ -71,7 +99,11 @@ void Renderer::Render(int nx, int ny, const Camera& camera, const Scene *scene,
           double u = double(j + Rand()) / double(nx);
           double v = double(i + Rand()) / double(ny);
           auto ray = camera.GetRay(u, v);
-          color += env->color_of_ray(ray, scene, 50);
+          if ((i == 500 - 327) && (j == 280)) {
+            color += env->color_of_ray(ray, scene, 50, true);
+          } else {
+            color += env->color_of_ray(ray, scene, 50, false);
+          }
         }
         // color /= double(ns);
 
@@ -137,4 +169,4 @@ void Scan(int nx, int ny, const Camera& camera, const char* output) {
     write_ppm(output, nx, ny, data);
     DestroyWorld(world);
   }
-  #endif
+#endif
