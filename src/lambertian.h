@@ -2,7 +2,7 @@
 #define __LAMBERTIAN_H__
 
 #include "material.h"
-#include "orthonormal_basis.h"
+#include "pdf.h"
 #include "rand.h"
 #include "texture.h"
 
@@ -39,16 +39,20 @@ class Lambertian : public Material {
 
 bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
                          Vec3* attenuation, Ray* scattered, double* pdf) const {
-  OrthonormalBasis ob;
-  ob.BuildFromW(rec.normal);
-  auto direction = unit_vector(ob.Local(RandomCosineDirection()));
+  // OrthonormalBasis ob;
+  // ob.BuildFromW(rec.normal);
+
+  CosinePdf cosine_pdf(rec.normal);
+  
+  auto direction = cosine_pdf.Generate(); // unit_vector(ob.Local(RandomCosineDirection()));
   // Vec3 target = rec.p + rec.normal + random_unit_vector();
   // *scattered = Ray(rec.p, target - rec.p, ray_in.time());
   *scattered = Ray(rec.p, direction, ray_in.time());
   *attenuation = albedo_->Value(rec.u, rec.v, rec.p);
   // TODO(explain)
   // *pdf = dot(rec.normal, unit_vector(scattered->direction())) / M_PI;
-  *pdf = dot(ob.w(), scattered->direction()) / M_PI;
+  // *pdf = dot(ob.w(), scattered->direction()) / M_PI;
+  *pdf = cosine_pdf.Value(direction);
   return true;
 }
 

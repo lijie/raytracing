@@ -6,12 +6,12 @@
 class OrthonormalBasis {
  public:
   OrthonormalBasis() {}
-  Vec3 u() { return axis_[0]; }
-  Vec3 v() { return axis_[1]; }
-  Vec3 w() { return axis_[2]; }
+  Vec3 u() const { return axis_[0]; }
+  Vec3 v() const { return axis_[1]; }
+  Vec3 w() const { return axis_[2]; }
 
-  Vec3 Local(const Vec3& a) { return a.x() * u() + a.y() * v() + a.z() * w(); }
-  Vec3 Local(double x, double y, double z) {
+  Vec3 Local(const Vec3& a) const { return a.x() * u() + a.y() * v() + a.z() * w(); }
+  Vec3 Local(double x, double y, double z) const {
     return x * u() + y * v() + z * w();
   }
 

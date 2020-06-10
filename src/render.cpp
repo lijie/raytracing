@@ -28,6 +28,7 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
 
     if (rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf)) {
       // test light sample start
+      #if 0
       auto on_light = Vec3(RandDouble(213, 343), 554, RandDouble(227, 332));
       auto to_light = on_light - rec.p;
       auto distance_squared = to_light.suqared_length();
@@ -51,6 +52,7 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
 
       pdf = distance_squared / (light_cosine * light_area);
       scattered = Ray(rec.p, to_light, ray.time());
+      #endif
       // test light sample end
 
       return emited +
