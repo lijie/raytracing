@@ -22,8 +22,10 @@ class Scene {
     width_ = width;
     height_ = height;
   }
+  void SetLightSource(Hitable *light) { light_ = light; }
 
   virtual Vec3 BackgroundColor(const Ray &ray) const;
+  Hitable *GetLightSource() const { return light_; }
 
  protected:
   virtual void OnCreate() {}
@@ -31,6 +33,7 @@ class Scene {
 
  private:
   Hitable *world_;
+  Hitable *light_;
   Camera *camera_;
   double width_;
   double height_;

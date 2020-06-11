@@ -40,9 +40,10 @@ class CornellBox : public Scene {
         new Lambertian(new ConstantTexture(Vec3(0.12, 0.45, 0.15)));
     auto light_mat = new DiffuseLight(new ConstantTexture(Vec3(15, 15, 15)));
 
+    auto light_source = new XZRect(213, 343, 227, 332, 554, light_mat);
     AddHitable(new FlipFace(new YZRect(0, 555, 0, 555, 555, green_mat)));
     AddHitable(new YZRect(0, 555, 0, 555, 0, red_mat));
-    AddHitable(new XZRect(213, 343, 227, 332, 554, light_mat));
+    AddHitable(light_source);
     AddHitable(new XZRect(0, 555, 0, 555, 0, white_mat));
     AddHitable(new FlipFace(new XZRect(0, 555, 0, 555, 555, white_mat)));
     AddHitable(new FlipFace(new XYRect(0, 555, 0, 555, 555, white_mat)));
@@ -65,6 +66,8 @@ class CornellBox : public Scene {
     auto rotate_box2 = new RotateY(box2, -18);
     auto translate_rotate_box2 = new Translate(rotate_box2, Vec3(130, 0, 65));
     AddHitable(translate_rotate_box2);
+
+    SetLightSource(light_source);
 
     printf("OnCreate done.\n");
   }

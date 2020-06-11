@@ -55,6 +55,8 @@ class XZRect : public Hitable {
   bool Hit(const Ray &ray, double t_min, double t_max,
            HitRecord *rec) const override;
   bool BoundingBox(double t0, double t1, AABB *box) const override;
+  Vec3 SurfaceRandomPoint(const Vec3 &origin) override;
+  double SurfaceRandomPdf(const Vec3 &origin, const Vec3 &direction) override;
   virtual std::string Name() override { return "XZRect"; };
 
  private:
@@ -85,6 +87,25 @@ bool XZRect::BoundingBox(double t0, double t1, AABB *box) const {
   return true;
 }
 
+Vec3 XZRect::SurfaceRandomPoint(const Vec3 &origin) {
+  Vec3 point = Vec3(RandDouble(x0_, x1_), k_, RandDouble(z0_, z1_));
+  return point - origin;
+}
+
+double XZRect::SurfaceRandomPdf(const Vec3 &origin, const Vec3 &direction) {
+  HitRecord rec;
+  Ray ray(origin, direction);
+
+  if (!this->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
+    return 0;
+  }
+
+  auto area = (x1_ - x0_) * (z1_ - z0_);
+  auto distance_squared = rec.t * rec.t * direction.suqared_length();
+  double cosine = fabs(dot(direction, rec.normal) / direction.length());
+
+  return distance_squared / (cosine * area);
+}
 
 class YZRect : public Hitable {
  public:
@@ -125,6 +146,5 @@ bool YZRect::BoundingBox(double t0, double t1, AABB *box) const {
   *box = AABB(Vec3(k_ - 0.0001, y0_, z0_), Vec3(k_ + 0.0001, y1_, z1_));
   return true;
 }
-
 
 #endif  // __RECT_H__

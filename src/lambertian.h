@@ -48,7 +48,10 @@ bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
   // Vec3 target = rec.p + rec.normal + random_unit_vector();
   // *scattered = Ray(rec.p, target - rec.p, ray_in.time());
   *scattered = Ray(rec.p, direction, ray_in.time());
-  *attenuation = albedo_->Value(rec.u, rec.v, rec.p);
+
+  // BRDF of Lambertian: BRDF = A * (1 / PI)
+  // see pbr-book ch8.3 Lambertian Reflection
+  *attenuation = albedo_->Value(rec.u, rec.v, rec.p) / M_PI;
   // TODO(explain)
   // *pdf = dot(rec.normal, unit_vector(scattered->direction())) / M_PI;
   // *pdf = dot(ob.w(), scattered->direction()) / M_PI;
