@@ -7,6 +7,7 @@
 #include "material.h"
 #include "rand.h"
 #include "scene.h"
+#include "pdf.h"
 
 // depth 控制反射次数
 Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
@@ -31,7 +32,6 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
     // }
 
     if (rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf1)) {
-      auto cosine_theta = dot(rec.normal, unit_vector(scattered.direction()));
 // test light sample start
 #if 0
       auto on_light = Vec3(RandDouble(213, 343), 554, RandDouble(227, 332));
@@ -60,8 +60,10 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
 #endif
       auto light_source = scene->GetLightSource();
       double pdf = 0;
-      Vec3 albedo;
-      double ratio = 0.6;
+      double ratio = 0.5;
+
+      // ShapePdf shape_pdf(light_source, rec.p);
+      // MixturePdf 
 
       // use light direction
       if (RandDouble() >= ratio) {
@@ -78,6 +80,9 @@ Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
         // pdf = pdf1;
         //albedo = attenuation * cosine_theta;
       }
+      auto cosine_theta = dot(rec.normal, unit_vector(scattered.direction()));
+      if (cosine_theta < 0)
+        cosine_theta = 0;
 
       // test light sample end
 
@@ -110,7 +115,7 @@ static void GammaCorrection(int samples_per_pixel, Vec3* color) {
 void Renderer::Render(int nx, int ny, const Camera& camera, const Scene* scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
-  int ns = 500 * 2;  // for antialiasing
+  int ns = 500 * 20;  // for antialiasing
 
   data->resize(nx * ny * 3);
 
