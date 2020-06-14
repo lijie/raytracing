@@ -13,86 +13,40 @@
 Vec3 Renderer::color_of_ray(const Ray& ray, const Scene* scene, int depth,
                             bool trace) {
   HitRecord rec;
+  ScatterRecord srec;
   Hitable* world = scene->GetRoot();
 
   if (depth == 0) return Vec3(0, 0, 0);
 
   if (world->Hit(ray, 0.001, __FLT_MAX__, &rec)) {
-    Ray scattered;
-    Vec3 attenuation;
     Vec3 emited = rec.mat->Emmited(rec.u, rec.v, rec.p);
-      double pdf1;
-      double pdf2;
 
     // 如果打到光源, 直接结束
     if (rec.target == scene->GetLightSource())
       return emited;
-    // if (rec.target->Name() == "XYRect") {
-    //   printf("%f, %f, %f\n", emited.x(), emited.y(), emited.z());
-    // }
 
-    if (rec.mat->Scatter(ray, rec, &attenuation, &scattered, &pdf1)) {
-// test light sample start
-#if 0
-      auto on_light = Vec3(RandDouble(213, 343), 554, RandDouble(227, 332));
-      auto to_light = on_light - rec.p;
-      auto distance_squared = to_light.suqared_length();
-      to_light = unit_vector(to_light);
-
-      if (dot(to_light, rec.normal) < 0) {
-        if (trace) {
-          printf("no light %s\n", rec.target->Name().c_str());
-        }
-        return emited;
-      }
-
-      double light_area = (343 - 213) * (332 - 227);
-      auto light_cosine = fabs(to_light.y());
-      if (light_cosine < 0.000001) {
-        if (trace) {
-          printf("no light 2\n");
-        }
-        return emited;
-      }
-
-      pdf = distance_squared / (light_cosine * light_area);
-      scattered = Ray(rec.p, to_light, ray.time());
-#endif
+    if (rec.mat->Scatter(ray, rec, &srec)) {
       auto light_source = scene->GetLightSource();
-      double pdf = 0;
       double ratio = 0.5;
 
-      // ShapePdf shape_pdf(light_source, rec.p);
-      // MixturePdf 
-
-      // use light direction
-      if (RandDouble() >= ratio) {
-        Vec3 direction = light_source->SurfaceRandomPoint(rec.p);
-        pdf2 = light_source->SurfaceRandomPdf(rec.p, direction);
-        pdf = pdf1 * ratio + pdf2 * (1 - ratio);
-        // pdf = pdf2;
-        scattered = Ray(rec.p, direction, ray.time());
-        //albedo = attenuation * cosine_theta / M_PI;
-      } else {
-        // use lambertian direction
-        pdf2 = light_source->SurfaceRandomPdf(rec.p, unit_vector(scattered.direction()));
-        pdf = pdf1 * ratio + pdf2 * (1 - ratio);
-        // pdf = pdf1;
-        //albedo = attenuation * cosine_theta;
+      if (srec.is_specular) {
+        return srec.attenuation * color_of_ray(srec.specular_ray, scene, depth - 1, trace);
       }
+
+      ShapePdf shape_pdf(light_source, rec.p);
+      MixturePdf mix_pdf(srec.pdf.get(), &shape_pdf, ratio);
+
+      auto direction = mix_pdf.Generate();
+      auto pdf = mix_pdf.Value(direction);
+      auto scattered = Ray(rec.p, direction, ray.time());
+
       auto cosine_theta = dot(rec.normal, unit_vector(scattered.direction()));
       if (cosine_theta < 0)
         cosine_theta = 0;
 
-      // test light sample end
-
-      // return emited +
-      //        attenuation * rec.mat->ScatteringPdf(ray, rec, scattered) *
-      //            color_of_ray(scattered, scene, depth - 1, trace) / pdf;
-
       // see The Renderring Equation
       // attenuation is value of material BxDF
-      return emited + attenuation * cosine_theta * color_of_ray(scattered, scene, depth - 1, trace) / pdf;
+      return emited + srec.attenuation * cosine_theta * color_of_ray(scattered, scene, depth - 1, trace) / pdf;
     } else {
       return emited;
     }
@@ -115,7 +69,7 @@ static void GammaCorrection(int samples_per_pixel, Vec3* color) {
 void Renderer::Render(int nx, int ny, const Camera& camera, const Scene* scene,
                       std::vector<int>* data) {
   const int thread_count = nr_of_thread_;
-  int ns = 500 * 20;  // for antialiasing
+  int ns = 50;  // for antialiasing
 
   data->resize(nx * ny * 3);
 

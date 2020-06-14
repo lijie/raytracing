@@ -1,4 +1,5 @@
 #include "rand.h"
+
 #include <random>
 
 static std::random_device rd;
@@ -11,8 +12,8 @@ void RandInit() {
 }
 
 double RandDouble(double start, double end) {
-    std::uniform_real_distribution<double> dist(start, end);
-    return dist(mt);
+  std::uniform_real_distribution<double> dist(start, end);
+  return dist(mt);
 }
 
 Vec3 RandomCosineDirection() {
@@ -25,3 +26,14 @@ Vec3 RandomCosineDirection() {
   return Vec3(x, y, z);
 }
 
+Vec3 RandomToSphere(double radius, double distance_squared) {
+  auto r1 = RandDouble();
+  auto r2 = RandDouble();
+  auto z = 1 + r2 * (sqrt(1 - radius * radius / distance_squared) - 1);
+
+  auto phi = 2 * M_PI * r1;
+  auto x = cos(phi) * sqrt(1 - z * z);
+  auto y = sin(phi) * sqrt(1 - z * z);
+
+  return Vec3(x, y, z);
+}

@@ -20,16 +20,19 @@ class Sphere : public Hitable {
            HitRecord* rec) const override;
   bool BoundingBox(double t0, double t1, AABB* box) const override;
 
+  Vec3 SurfaceRandomPoint(const Vec3& origin) override;
+  double SurfaceRandomPdf(const Vec3& origin, const Vec3& direction) override;
+
   // 球形坐标系
   // u = phi / 2pi
   // v = theta / pi
   // phi = atan2(y, x)
   // theta = asin(z)
-  static void GetUV(const Vec3& point, double *u, double *v) {
-    double phi = atan2(point.z(), point.x()); // atan2 返回 [-pi, pi]
-    double theta = asin(point.y());// asin 返回 [-pi/2, pi/2]
+  static void GetUV(const Vec3& point, double* u, double* v) {
+    double phi = atan2(point.z(), point.x());  // atan2 返回 [-pi, pi]
+    double theta = asin(point.y());            // asin 返回 [-pi/2, pi/2]
     *u = 1 - (phi + M_PI) / (2 * M_PI);
-    *v = (theta + M_PI/2) / M_PI;
+    *v = (theta + M_PI / 2) / M_PI;
   }
 
   std::string Name() override { return name_; }
@@ -77,6 +80,25 @@ bool Sphere::BoundingBox(double t0, double t1, AABB* box) const {
   *box = AABB(center_ - Vec3(radius_, radius_, radius_),
               center_ + Vec3(radius_, radius_, radius_));
   return true;
+}
+
+Vec3 Sphere::SurfaceRandomPoint(const Vec3& origin) {
+  Vec3 direction = center_ - origin;
+  auto distance_squared = direction.suqared_length();
+  OrthonormalBasis ob;
+  ob.BuildFromW(direction);
+  return ob.Local(RandomToSphere(radius_, distance_squared));
+}
+
+double Sphere::SurfaceRandomPdf(const Vec3& origin, const Vec3& direction) {
+  HitRecord rec;
+  if (!this->Hit(Ray(origin, direction), 0.0001, __FLT_MAX__, &rec)) return 0;
+
+  auto cos_theta_max =
+      sqrt(1 - radius_ * radius_ / (center_ - origin).suqared_length());
+  auto solid_angle = 2 * M_PI * (1 - cos_theta_max);
+
+  return 1 / solid_angle;
 }
 
 #endif  // __SPHERE_H__

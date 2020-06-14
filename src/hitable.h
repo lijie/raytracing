@@ -9,6 +9,7 @@
 class Material;
 class Hitable;
 class AABB;
+class Pdf;
 
 struct HitRecord {
   double t;         // paramter of ray

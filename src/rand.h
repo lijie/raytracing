@@ -13,5 +13,6 @@ inline double Rand() {
 // [start, end)
 double RandDouble(double start = 0, double end = 1);
 Vec3 RandomCosineDirection();
+Vec3 RandomToSphere(double radius, double distance_squared);
 
 #endif  // __RAND_H__

@@ -12,7 +12,9 @@ class Metal : public Material {
     if (fuzz_ > 1) fuzz_ = 1;
   }
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
-               Ray* scattered, double *pdf) const override;
+               Ray* scattered, double* pdf) const override;
+  bool Scatter(const Ray& ray_in, const HitRecord& rec,
+               ScatterRecord* srec) const override;
 
   Vec3 reflect(const Vec3& v, const Vec3& n) const;
   // 在 unit sphere 中随机找一个点
@@ -31,14 +33,24 @@ class Metal : public Material {
 };
 
 bool Metal::Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
-                    Ray* scattered, double *pdf) const {
+                    Ray* scattered, double* pdf) const {
   auto reflected = reflect(unit_vector(ray_in.direction()), rec.normal);
   *scattered = Ray(rec.p, reflected + fuzz_ * random_in_unit_sphere());
   *attenuation = albedo_;
+  *pdf = 1.0;
   // 我的理解是 dot(a,b) 可以看作a投影到b的length
   // 如果反射的射线在法线上的投影<=0, 那说明从投射方向看不到这个反射.
-  *pdf = 1.0;
   return (dot(scattered->direction(), rec.normal) > 0);
+}
+
+bool Metal::Scatter(const Ray& ray_in, const HitRecord& rec,
+                    ScatterRecord* srec) const {
+  auto reflected = reflect(unit_vector(ray_in.direction()), rec.normal);
+  srec->is_specular = true;
+  srec->pdf = nullptr;
+  srec->specular_ray = Ray(rec.p, reflected + fuzz_ * random_in_unit_sphere());
+  srec->attenuation = albedo_;
+  return true;
 }
 
 // see FOCG, p238

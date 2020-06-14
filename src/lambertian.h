@@ -1,6 +1,8 @@
 #ifndef __LAMBERTIAN_H__
 #define __LAMBERTIAN_H__
 
+#include <memory>
+
 #include "material.h"
 #include "pdf.h"
 #include "rand.h"
@@ -12,6 +14,8 @@ class Lambertian : public Material {
   Lambertian(Texture* tex) : albedo_(tex) {}
   bool Scatter(const Ray& ray_in, const HitRecord& rec, Vec3* attenuation,
                Ray* scattered, double* pdf) const override;
+  bool Scatter(const Ray& ray_in, const HitRecord& rec,
+               ScatterRecord* srec) const override;
   double ScatteringPdf(const Ray& ray, const HitRecord& rec,
                        const Ray& scattered) const override;
 
@@ -43,8 +47,9 @@ bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
   // ob.BuildFromW(rec.normal);
 
   CosinePdf cosine_pdf(rec.normal);
-  
-  auto direction = cosine_pdf.Generate(); // unit_vector(ob.Local(RandomCosineDirection()));
+
+  auto direction =
+      cosine_pdf.Generate();  // unit_vector(ob.Local(RandomCosineDirection()));
   // Vec3 target = rec.p + rec.normal + random_unit_vector();
   // *scattered = Ray(rec.p, target - rec.p, ray_in.time());
   *scattered = Ray(rec.p, direction, ray_in.time());
@@ -56,6 +61,15 @@ bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec,
   // *pdf = dot(rec.normal, unit_vector(scattered->direction())) / M_PI;
   // *pdf = dot(ob.w(), scattered->direction()) / M_PI;
   *pdf = cosine_pdf.Value(direction);
+  return true;
+}
+
+bool Lambertian::Scatter(const Ray& ray_in, const HitRecord& rec, ScatterRecord* srec) const {
+  srec->is_specular = false;
+  // BRDF of Lambertian: BRDF = A * (1 / PI)
+  // see pbr-book ch8.3 Lambertian Reflection
+  srec->attenuation = albedo_->Value(rec.u, rec.v, rec.p) / M_PI;
+  srec->pdf = std::make_shared<CosinePdf>(rec.normal);
   return true;
 }
 

@@ -39,6 +39,7 @@ class CornellBox : public Scene {
     auto green_mat =
         new Lambertian(new ConstantTexture(Vec3(0.12, 0.45, 0.15)));
     auto light_mat = new DiffuseLight(new ConstantTexture(Vec3(15, 15, 15)));
+    auto aluminum_mat = new Metal(Vec3(0.8, 0.85, 0.88), 0);
 
     auto light_source = new XZRect(213, 343, 227, 332, 554, light_mat);
     AddHitable(new FlipFace(new YZRect(0, 555, 0, 555, 555, green_mat)));
@@ -52,7 +53,8 @@ class CornellBox : public Scene {
     // AddHitable(new Box(Vec3(265, 0, 295), Vec3(430, 330, 460), white_mat));
     printf("OnCreate done. 1\n");
 
-    auto box1 = new Box(Vec3(0, 0, 0), Vec3(165, 330, 165), white_mat);
+    // auto box1 = new Box(Vec3(0, 0, 0), Vec3(165, 330, 165), white_mat);
+    auto box1 = new Box(Vec3(0, 0, 0), Vec3(165, 330, 165), aluminum_mat);
     printf("OnCreate done. 1.1\n");
     auto rotate_box1 = new RotateY(box1, 15);
     printf("OnCreate done. 1.2\n");
