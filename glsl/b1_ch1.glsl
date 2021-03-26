@@ -2,7 +2,7 @@
 struct Ray {
     vec3 origin;    // 原点
     vec3 direction; // 方向, 单位向量
-}
+};
 
 void main()
 {
