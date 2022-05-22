@@ -384,7 +384,7 @@ vec3 toGamma(vec3 c)
 {
     return pow(c, vec3(1.0 / 2.2));
 }
-
+ 
 void random_scene3() {
 world_add(sphere_new(vec3(-10.354122, 0.200000, 3.016782), 0.200000, material_new_dielectric(1.500000)));
 world_add(sphere_new(vec3(-10.595965, 0.200000, 7.650301), 0.200000, material_new_dielectric(1.500000)));
